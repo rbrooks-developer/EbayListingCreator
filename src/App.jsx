@@ -59,6 +59,7 @@ function AppContent() {
           onChange={setListings}
           categories={connectionData?.categories ?? []}
           categoryTreeId={connectionData?.categoryTreeId ?? null}
+          shippingServices={connectionData?.shippingServices ?? []}
           accessToken={accessToken}
           sandbox={connectionData?.sandbox ?? false}
         />

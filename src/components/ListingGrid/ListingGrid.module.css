@@ -199,6 +199,9 @@
 .colBestOffer   { width: 100px; }
 .colCategory    { min-width: 200px; }
 .colSpecifics   { width: 130px; }
+.colShipping    { min-width: 200px; }
+.colDimension   { width: 72px; }
+.colWeight      { width: 90px; }
 .colActions     { width: 44px; text-align: center; }
 
 /* Cell inputs */

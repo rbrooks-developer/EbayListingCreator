@@ -166,5 +166,10 @@ export function createEmptyListing() {
     categoryId: '',
     categoryName: '',
     aspects: {}, // { [aspectName]: string | string[] }
+    shippingService: '',
+    length: '',
+    width: '',
+    height: '',
+    weight: '',
   };
 }

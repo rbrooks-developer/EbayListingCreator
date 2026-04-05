@@ -53,6 +53,7 @@ export default function ListingGrid({
   onChange,
   categories = [],
   categoryTreeId = null,
+  shippingServices = [],
   accessToken = null,
   sandbox = false,
 }) {
@@ -216,6 +217,11 @@ export default function ListingGrid({
                   <th className={styles.colAuctionStartPrice}>Start Price ($)</th>
                   <th className={styles.colAuctionDays}>Auction Days</th>
                   <th className={styles.colBestOffer}>Best Offer ($)</th>
+                  <th className={styles.colShipping}>Shipping Method</th>
+                  <th className={styles.colDimension}>L (in)</th>
+                  <th className={styles.colDimension}>W (in)</th>
+                  <th className={styles.colDimension}>H (in)</th>
+                  <th className={styles.colWeight}>Weight (lb)</th>
                   <th className={styles.colActions} aria-label="Actions" />
                 </tr>
               </thead>
@@ -225,6 +231,7 @@ export default function ListingGrid({
                     key={listing.id}
                     listing={listing}
                     categories={categories}
+                    shippingServices={shippingServices}
                     aspectsCache={aspectsCache}
                     onUpdate={updateField}
                     onUpdateCategory={updateCategory}
@@ -274,7 +281,7 @@ export default function ListingGrid({
 
 // ── ListingRow ────────────────────────────────────────────────────────────────
 
-function ListingRow({ listing, categories, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, hasCategories }) {
+function ListingRow({ listing, categories, shippingServices, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, hasCategories }) {
   const isAuction = listing.listingType === 'Auction';
   const status = getAspectsStatus(listing, aspectsCache.current);
   const statusCfg = STATUS_CONFIG[status];
@@ -419,6 +426,79 @@ function ListingRow({ listing, categories, aspectsCache, onUpdate, onUpdateCateg
           step={0.01}
           placeholder="0.00"
           aria-label="Best offer amount"
+        />
+      </td>
+
+      {/* Shipping Method */}
+      <td className={styles.colShipping}>
+        {shippingServices.length > 0 ? (
+          <select
+            className={styles.cellSelect}
+            value={listing.shippingService}
+            onChange={(e) => field('shippingService', e.target.value)}
+            aria-label="Shipping method"
+          >
+            <option value="">— select —</option>
+            {shippingServices.map((s) => (
+              <option key={`${s.carrierCode}-${s.serviceCode}`} value={s.serviceCode}>
+                {s.carrierCode} — {s.serviceName}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className={styles.naText}>Connect API</span>
+        )}
+      </td>
+
+      {/* Dimensions */}
+      <td className={styles.colDimension}>
+        <input
+          type="number"
+          className={styles.cellInput}
+          value={listing.length}
+          onChange={(e) => field('length', e.target.value)}
+          min={0}
+          step={0.1}
+          placeholder="0"
+          aria-label="Length (inches)"
+        />
+      </td>
+      <td className={styles.colDimension}>
+        <input
+          type="number"
+          className={styles.cellInput}
+          value={listing.width}
+          onChange={(e) => field('width', e.target.value)}
+          min={0}
+          step={0.1}
+          placeholder="0"
+          aria-label="Width (inches)"
+        />
+      </td>
+      <td className={styles.colDimension}>
+        <input
+          type="number"
+          className={styles.cellInput}
+          value={listing.height}
+          onChange={(e) => field('height', e.target.value)}
+          min={0}
+          step={0.1}
+          placeholder="0"
+          aria-label="Height (inches)"
+        />
+      </td>
+
+      {/* Weight */}
+      <td className={styles.colWeight}>
+        <input
+          type="number"
+          className={styles.cellInput}
+          value={listing.weight}
+          onChange={(e) => field('weight', e.target.value)}
+          min={0}
+          step={0.01}
+          placeholder="0.00"
+          aria-label="Weight (lbs)"
         />
       </td>
 
