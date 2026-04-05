@@ -1,0 +1,172 @@
+.wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* ── Trigger button ──────────────────────────────────────────────────────── */
+
+.trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-white);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s;
+  min-height: 32px;
+}
+
+.trigger:hover:not(.triggerDisabled) {
+  border-color: var(--ebay-blue);
+}
+
+.triggerDisabled {
+  background: var(--bg-light);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.triggerEmpty {
+  color: var(--text-muted);
+}
+
+.triggerText {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.triggerIcons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.clearBtn {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.clearBtn:hover {
+  color: var(--error);
+  background: var(--error-bg);
+}
+
+.chevron {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+/* ── Search input ────────────────────────────────────────────────────────── */
+
+.searchWrapper {
+  width: 100%;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1.5px solid var(--ebay-blue);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: var(--bg-white);
+  box-shadow: 0 0 0 3px rgba(54, 101, 243, 0.12);
+  outline: none;
+}
+
+/* ── Dropdown ────────────────────────────────────────────────────────────── */
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  max-height: 260px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.hint {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.hint:first-child {
+  border-top: none;
+}
+
+.list {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ── Option ──────────────────────────────────────────────────────────────── */
+
+.option {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f4f4f4;
+  transition: background 0.08s;
+}
+
+.option:last-child {
+  border-bottom: none;
+}
+
+.optionActive {
+  background: #f0f4ff;
+}
+
+.optionSelected {
+  background: #e8f0fe;
+  font-weight: 600;
+}
+
+.optionPath {
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  flex: 1;
+  line-height: 1.35;
+}
+
+.optionId {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}

@@ -1,0 +1,95 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.logoE { color: var(--ebay-red); }
+.logoB { color: var(--ebay-blue); }
+.logoA { color: var(--ebay-yellow); }
+.logoY { color: var(--ebay-green); }
+
+.appName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.nav a {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.nav a:hover {
+  color: var(--ebay-blue);
+  text-decoration: none;
+}
+
+.authSlot {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.signInBtn {
+  padding: 0.45rem 1.1rem;
+  background: var(--ebay-blue);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.signInBtn:hover {
+  background: #2a55e0;
+}
+
+@media (max-width: 480px) {
+  .appName {
+    display: none;
+  }
+  .nav {
+    gap: 1rem;
+  }
+}
