@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext.jsx';
+import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import SiteHeader from './components/SiteHeader/SiteHeader.jsx';
 import HomePage from './components/HomePage/HomePage.jsx';
 import OAuthSection from './components/OAuthSection/OAuthSection.jsx';
@@ -73,8 +74,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

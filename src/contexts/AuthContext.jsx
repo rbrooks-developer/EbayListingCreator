@@ -14,18 +14,31 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true); // true until initial session checked
 
   useEffect(() => {
-    // Hydrate session on mount (handles page-refresh and OAuth callback return)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    let subscription;
 
-    // Keep state in sync with Supabase auth events (sign in, sign out, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    // Hydrate session — catch network/config errors so they don't crash the app
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setUser(session?.user ?? null);
+      })
+      .catch(() => {
+        // Supabase unreachable or misconfigured — continue as signed-out
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
-    return () => subscription.unsubscribe();
+    // Keep state in sync with Supabase auth events
+    try {
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user ?? null);
+      });
+      subscription = data.subscription;
+    } catch {
+      // onAuthStateChange unavailable — non-fatal
+    }
+
+    return () => subscription?.unsubscribe();
   }, []);
 
   const value = {
