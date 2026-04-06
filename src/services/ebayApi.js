@@ -26,6 +26,7 @@ const USER_SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.inventory',
   'https://api.ebay.com/oauth/api_scope/sell.account',
   'https://api.ebay.com/oauth/api_scope/sell.account.readonly',
+  'https://api.ebay.com/oauth/api_scope/commerce.identity.readonly',
 ].join(' ');
 
 // ── Env helpers ───────────────────────────────────────────────────────────────

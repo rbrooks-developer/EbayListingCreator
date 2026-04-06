@@ -77,11 +77,12 @@ function AppContent() {
       const token = await exchangeCodeForTokens(code, sandbox);
       setAccessToken(token);
 
-      const [userInfo, { categories, categoryTreeId }, shippingServices] = await Promise.all([
+      const [userInfo, categoryResult, shippingServices] = await Promise.all([
         fetchUserInfo(token, sandbox),
-        fetchCategories(token, marketplace, sandbox),
-        fetchShippingServices(token, marketplace, sandbox),
+        fetchCategories(token, marketplace, sandbox).catch(() => ({ categories: [], categoryTreeId: null })),
+        fetchShippingServices(token, marketplace, sandbox).catch(() => []),
       ]);
+      const { categories, categoryTreeId } = categoryResult;
 
       setConnectionData({
         marketplace,
