@@ -1,18 +1,17 @@
 /**
- * Cloudflare Worker — eBay Token Proxy
+ * Cloudflare Worker — eBay API Proxy
  *
- * Proxies eBay OAuth token exchange and refresh requests server-side,
- * avoiding CORS restrictions that block browser-to-eBay calls.
+ * Routes:
+ *   POST /exchange  — authorization code → tokens
+ *   POST /refresh   — refresh token → new access token
+ *   POST /proxy     — general eBay API proxy (GET/POST with Bearer token)
  *
- * Environment variables (set via Cloudflare dashboard or wrangler.toml [vars]):
- *   EBAY_CLIENT_ID            — Production App ID
- *   EBAY_CLIENT_SECRET        — Production Client Secret
- *   EBAY_RUNAME               — Production RuName
- *   EBAY_SANDBOX_CLIENT_ID    — Sandbox App ID
- *   EBAY_SANDBOX_CLIENT_SECRET — Sandbox Client Secret
- *   EBAY_SANDBOX_RUNAME       — Sandbox RuName
- *   ALLOWED_ORIGIN            — e.g. https://rbrooks-developer.github.io
- *                               Use * to allow all origins (dev only)
+ * Secrets (set via `wrangler secret put`):
+ *   EBAY_CLIENT_ID, EBAY_CLIENT_SECRET, EBAY_RUNAME
+ *   EBAY_SANDBOX_CLIENT_ID, EBAY_SANDBOX_CLIENT_SECRET, EBAY_SANDBOX_RUNAME
+ *
+ * Vars (wrangler.toml [vars]):
+ *   ALLOWED_ORIGIN — origin to allow, or * for all
  */
 
 const EBAY_TOKEN_URL         = 'https://api.ebay.com/identity/v1/oauth2/token';
@@ -25,116 +24,141 @@ const USER_SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.account.readonly',
 ].join(' ');
 
-// ── CORS helpers ──────────────────────────────────────────────────────────────
+// ── CORS ──────────────────────────────────────────────────────────────────────
 
-function corsHeaders(env, requestOrigin) {
-  const allowed = env.ALLOWED_ORIGIN ?? '*';
-  const origin  = allowed === '*' ? '*' : (requestOrigin === allowed ? allowed : allowed);
+function getCorsHeaders(env) {
   return {
-    'Access-Control-Allow-Origin':  origin,
+    'Access-Control-Allow-Origin':  env.ALLOWED_ORIGIN || '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 }
 
-function handleOptions(env, requestOrigin) {
-  return new Response(null, { status: 204, headers: corsHeaders(env, requestOrigin) });
-}
-
-function jsonResponse(data, status, env, requestOrigin) {
+function ok(data, env) {
   return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...corsHeaders(env, requestOrigin),
-    },
+    status: 200,
+    headers: { 'Content-Type': 'application/json', ...getCorsHeaders(env) },
   });
 }
 
-// ── Main handler ──────────────────────────────────────────────────────────────
+function err(message, status, env) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...getCorsHeaders(env) },
+  });
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
 
 export default {
   async fetch(request, env) {
-    const origin = request.headers.get('Origin') ?? '';
-    const url    = new URL(request.url);
-
-    // CORS preflight
-    if (request.method === 'OPTIONS') return handleOptions(env, origin);
-
-    // Only accept POST
-    if (request.method !== 'POST') {
-      return jsonResponse({ error: 'Method not allowed' }, 405, env, origin);
-    }
-
-    let body;
     try {
-      body = await request.json();
-    } catch {
-      return jsonResponse({ error: 'Invalid JSON body' }, 400, env, origin);
+      return await handle(request, env);
+    } catch (e) {
+      return err(e.message ?? 'Internal worker error', 500, env);
     }
-
-    const sandbox = body.sandbox === true;
-
-    const clientId     = sandbox ? env.EBAY_SANDBOX_CLIENT_ID     : env.EBAY_CLIENT_ID;
-    const clientSecret = sandbox ? env.EBAY_SANDBOX_CLIENT_SECRET : env.EBAY_CLIENT_SECRET;
-    const ruName       = sandbox ? env.EBAY_SANDBOX_RUNAME        : env.EBAY_RUNAME;
-    const tokenUrl     = sandbox ? EBAY_SANDBOX_TOKEN_URL         : EBAY_TOKEN_URL;
-
-    if (!clientId || !clientSecret || !ruName) {
-      return jsonResponse(
-        { error: `Worker is missing ${sandbox ? 'sandbox' : 'production'} eBay credentials.` },
-        500, env, origin
-      );
-    }
-
-    const credentials = btoa(`${clientId}:${clientSecret}`);
-    let formBody;
-
-    // ── Route: /exchange — authorization code → tokens ────────────────────────
-    if (url.pathname.endsWith('/exchange')) {
-      const { code } = body;
-      if (!code) return jsonResponse({ error: 'Missing "code"' }, 400, env, origin);
-
-      formBody = new URLSearchParams({
-        grant_type:   'authorization_code',
-        code,
-        redirect_uri: ruName,
-      });
-
-    // ── Route: /refresh — refresh token → new access token ───────────────────
-    } else if (url.pathname.endsWith('/refresh')) {
-      const { refreshToken } = body;
-      if (!refreshToken) return jsonResponse({ error: 'Missing "refreshToken"' }, 400, env, origin);
-
-      formBody = new URLSearchParams({
-        grant_type:    'refresh_token',
-        refresh_token: refreshToken,
-        scope:         USER_SCOPES,
-      });
-
-    } else {
-      return jsonResponse({ error: 'Unknown route. Use /exchange or /refresh.' }, 404, env, origin);
-    }
-
-    // ── Forward to eBay ───────────────────────────────────────────────────────
-    const ebayRes = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        Authorization:  `Basic ${credentials}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formBody,
-    });
-
-    const data = await ebayRes.json().catch(() => ({}));
-
-    if (!ebayRes.ok) {
-      return jsonResponse(
-        { error: data.error_description ?? data.error ?? `eBay error ${ebayRes.status}` },
-        ebayRes.status, env, origin
-      );
-    }
-
-    return jsonResponse(data, 200, env, origin);
   },
 };
+
+// ── Router ────────────────────────────────────────────────────────────────────
+
+async function handle(request, env) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: getCorsHeaders(env) });
+  }
+  if (request.method !== 'POST') return err('Method not allowed', 405, env);
+
+  const path = new URL(request.url).pathname;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return err('Invalid JSON body', 400, env); }
+
+  if (path.endsWith('/exchange')) return handleExchange(body, env);
+  if (path.endsWith('/refresh'))  return handleRefresh(body, env);
+  if (path.endsWith('/proxy'))    return handleProxy(body, env);
+
+  return err('Unknown route — use /exchange, /refresh, or /proxy', 404, env);
+}
+
+// ── /exchange ─────────────────────────────────────────────────────────────────
+
+async function handleExchange(body, env) {
+  const { code, sandbox = false } = body;
+  if (!code) return err('Missing "code"', 400, env);
+
+  const { clientId, clientSecret, ruName, tokenUrl } = getEbayEnv(sandbox, env);
+  if (!clientId || !clientSecret || !ruName) {
+    return err(`Worker secrets not set for ${sandbox ? 'sandbox' : 'production'}`, 500, env);
+  }
+
+  const res = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: {
+      Authorization:  `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: ruName }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return err(data.error_description || data.error || `eBay ${res.status}`, res.status, env);
+  return ok(data, env);
+}
+
+// ── /refresh ──────────────────────────────────────────────────────────────────
+
+async function handleRefresh(body, env) {
+  const { refreshToken, sandbox = false } = body;
+  if (!refreshToken) return err('Missing "refreshToken"', 400, env);
+
+  const { clientId, clientSecret, tokenUrl } = getEbayEnv(sandbox, env);
+  if (!clientId || !clientSecret) {
+    return err(`Worker secrets not set for ${sandbox ? 'sandbox' : 'production'}`, 500, env);
+  }
+
+  const res = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: {
+      Authorization:  `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken, scope: USER_SCOPES }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return err(data.error_description || data.error || `eBay ${res.status}`, res.status, env);
+  return ok(data, env);
+}
+
+// ── /proxy ────────────────────────────────────────────────────────────────────
+
+async function handleProxy(body, env) {
+  const { url, token, method = 'GET', body: reqBody } = body;
+  if (!url)   return err('Missing "url"', 400, env);
+  if (!token) return err('Missing "token"', 400, env);
+
+  const res = await fetch(url, {
+    method,
+    headers: {
+      Authorization:  `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: method !== 'GET' && reqBody ? JSON.stringify(reqBody) : undefined,
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return err(data.error_description || data.error || `eBay ${res.status}`, res.status, env);
+  return ok(data, env);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getEbayEnv(sandbox, env) {
+  return {
+    clientId:     sandbox ? env.EBAY_SANDBOX_CLIENT_ID     : env.EBAY_CLIENT_ID,
+    clientSecret: sandbox ? env.EBAY_SANDBOX_CLIENT_SECRET : env.EBAY_CLIENT_SECRET,
+    ruName:       sandbox ? env.EBAY_SANDBOX_RUNAME        : env.EBAY_RUNAME,
+    tokenUrl:     sandbox ? EBAY_SANDBOX_TOKEN_URL         : EBAY_TOKEN_URL,
+  };
+}
