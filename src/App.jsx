@@ -92,10 +92,20 @@ function AppContent() {
         categoryTreeId,
         shippingServices,
       });
+
+      // Scroll back to the OAuth section after the redirect returns
+      requestAnimationFrame(() => {
+        document.getElementById('oauth')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     }
 
     completeConnection()
-      .catch((err) => setExchangeError(err.message))
+      .catch((err) => {
+        setExchangeError(err.message);
+        requestAnimationFrame(() => {
+          document.getElementById('oauth')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      })
       .finally(() => setIsExchanging(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
