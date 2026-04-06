@@ -13,13 +13,11 @@
 // ── Base URLs ─────────────────────────────────────────────────────────────────
 
 const EBAY_AUTH_URL        = 'https://auth.ebay.com/oauth2/authorize';
-const EBAY_TOKEN_URL       = 'https://api.ebay.com/identity/v1/oauth2/token';
 const EBAY_IDENTITY_URL    = 'https://apiz.ebay.com/commerce/identity/v1/user/';
 const EBAY_TAXONOMY_URL    = 'https://api.ebay.com/commerce/taxonomy/v1';
 const EBAY_METADATA_URL    = 'https://api.ebay.com/sell/metadata/v1';
 
 const SANDBOX_AUTH_URL     = 'https://auth.sandbox.ebay.com/oauth2/authorize';
-const SANDBOX_TOKEN_URL    = 'https://api.sandbox.ebay.com/identity/v1/oauth2/token';
 const SANDBOX_IDENTITY_URL = 'https://apiz.sandbox.ebay.com/commerce/identity/v1/user/';
 const SANDBOX_TAXONOMY_URL = 'https://api.sandbox.ebay.com/commerce/taxonomy/v1';
 const SANDBOX_METADATA_URL = 'https://api.sandbox.ebay.com/sell/metadata/v1';
@@ -36,15 +34,15 @@ const USER_SCOPES = [
 
 function getEnv(sandbox) {
   return {
-    clientId:     sandbox ? import.meta.env.VITE_EBAY_SANDBOX_CLIENT_ID     : import.meta.env.VITE_EBAY_CLIENT_ID,
-    clientSecret: sandbox ? import.meta.env.VITE_EBAY_SANDBOX_CLIENT_SECRET : import.meta.env.VITE_EBAY_CLIENT_SECRET,
-    ruName:       sandbox ? import.meta.env.VITE_EBAY_SANDBOX_RUNAME        : import.meta.env.VITE_EBAY_RUNAME,
+    clientId: sandbox ? import.meta.env.VITE_EBAY_SANDBOX_CLIENT_ID : import.meta.env.VITE_EBAY_CLIENT_ID,
+    ruName:   sandbox ? import.meta.env.VITE_EBAY_SANDBOX_RUNAME    : import.meta.env.VITE_EBAY_RUNAME,
   };
 }
 
 export function isEbayConfigured(sandbox = false) {
-  const { clientId, clientSecret, ruName } = getEnv(sandbox);
-  return !!(clientId && clientSecret && ruName);
+  const { clientId, ruName } = getEnv(sandbox);
+  const workerUrl = import.meta.env.VITE_TOKEN_WORKER_URL;
+  return !!(clientId && ruName && workerUrl);
 }
 
 /**
@@ -93,36 +91,37 @@ export function buildAuthorizationUrl(sandbox = false) {
   return `${sandbox ? SANDBOX_AUTH_URL : EBAY_AUTH_URL}?${params.toString()}`;
 }
 
-// ── Token exchange ────────────────────────────────────────────────────────────
+// ── Token exchange (via Cloudflare Worker proxy) ──────────────────────────────
+
+/**
+ * The worker URL is set via VITE_TOKEN_WORKER_URL in .env.
+ * If unset, token calls will fail with a clear error rather than hitting eBay
+ * directly (which is blocked by CORS in the browser).
+ */
+function getWorkerUrl() {
+  const url = import.meta.env.VITE_TOKEN_WORKER_URL;
+  if (!url) throw new Error('VITE_TOKEN_WORKER_URL is not set. Deploy the Cloudflare Worker and add its URL to .env.');
+  return url.replace(/\/$/, ''); // strip trailing slash
+}
+
+async function workerPost(route, payload) {
+  const res = await fetch(`${getWorkerUrl()}/${route}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Worker error (${res.status})`);
+  return data;
+}
 
 /**
  * Exchange an authorization code for access + refresh tokens.
  * Persists the refresh token in sessionStorage; returns the access token.
  */
 export async function exchangeCodeForTokens(code, sandbox = false) {
-  const { clientId, clientSecret, ruName } = getEnv(sandbox);
-  const tokenUrl = sandbox ? SANDBOX_TOKEN_URL : EBAY_TOKEN_URL;
-  const credentials = btoa(`${clientId}:${clientSecret}`);
-
-  const res = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: {
-      Authorization:  `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type:   'authorization_code',
-      code,
-      redirect_uri: ruName,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error_description || `Token exchange failed (${res.status})`);
-  }
-
-  const data = await res.json();
+  const data = await workerPost('exchange', { code, sandbox });
   sessionStorage.setItem('ebay_refresh_token', data.refresh_token);
   return data.access_token;
 }
@@ -131,32 +130,10 @@ export async function exchangeCodeForTokens(code, sandbox = false) {
  * Use the stored refresh token to get a new access token silently.
  */
 export async function refreshAccessToken(sandbox = false) {
-  const { clientId, clientSecret } = getEnv(sandbox);
   const refreshToken = sessionStorage.getItem('ebay_refresh_token');
   if (!refreshToken) throw new Error('No refresh token stored — user must re-connect.');
 
-  const tokenUrl = sandbox ? SANDBOX_TOKEN_URL : EBAY_TOKEN_URL;
-  const credentials = btoa(`${clientId}:${clientSecret}`);
-
-  const res = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: {
-      Authorization:  `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type:    'refresh_token',
-      refresh_token: refreshToken,
-      scope:         USER_SCOPES,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error_description || `Token refresh failed (${res.status})`);
-  }
-
-  const data = await res.json();
+  const data = await workerPost('refresh', { refreshToken, sandbox });
   return data.access_token;
 }
 

@@ -1,0 +1,31 @@
+name       = "ebay-token-proxy"
+main       = "index.js"
+account_id = "6a952ff82b7997ab63a6f8a03825c9a5"           # fill in: `wrangler whoami` or Cloudflare dashboard
+compatibility_date = "2024-01-01"
+
+# ── Allowed origin ─────────────────────────────────────────────────────────────
+# Set this to your GitHub Pages URL in production.
+# Use * only for local testing.
+[vars]
+ALLOWED_ORIGIN = "https://rbrooks-developer.github.io"
+
+# ── Secrets ────────────────────────────────────────────────────────────────────
+# Do NOT put secrets in this file. Set them with:
+#
+#   wrangler secret put EBAY_CLIENT_ID
+#   wrangler secret put EBAY_CLIENT_SECRET
+#   wrangler secret put EBAY_RUNAME
+#   wrangler secret put EBAY_SANDBOX_CLIENT_ID
+#   wrangler secret put EBAY_SANDBOX_CLIENT_SECRET
+#   wrangler secret put EBAY_SANDBOX_RUNAME
+#
+# Or set them in the Cloudflare dashboard:
+#   Workers & Pages → ebay-token-proxy → Settings → Variables and Secrets
+
+# ── Routes ─────────────────────────────────────────────────────────────────────
+# After deploying, Cloudflare assigns a URL like:
+#   https://ebay-token-proxy.<your-subdomain>.workers.dev
+#
+# The frontend calls:
+#   POST <VITE_TOKEN_WORKER_URL>/exchange
+#   POST <VITE_TOKEN_WORKER_URL>/refresh

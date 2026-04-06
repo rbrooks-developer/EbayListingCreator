@@ -81,8 +81,8 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
           {!isExchanging && !exchangeError && !isConnected && !configured && (
             <div className={styles.alertWarning} role="alert">
               <strong>eBay API not configured.</strong> Add{' '}
-              <code>VITE_EBAY_CLIENT_ID</code>, <code>VITE_EBAY_CLIENT_SECRET</code>, and{' '}
-              <code>VITE_EBAY_RUNAME</code> to your <code>.env</code> file.{' '}
+              <code>VITE_EBAY_CLIENT_ID</code>, <code>VITE_EBAY_RUNAME</code>, and{' '}
+              <code>VITE_TOKEN_WORKER_URL</code> to your <code>.env</code> file.{' '}
               See <code>.env.example</code> for setup instructions.
             </div>
           )}
