@@ -159,25 +159,45 @@ export async function fetchCategories(accessToken, marketplaceId = 'EBAY_US', sa
 
 // ── Shipping services ─────────────────────────────────────────────────────────
 
-export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_US', sandbox = false) {
-  const baseUrl = sandbox ? SANDBOX_METADATA_URL : EBAY_METADATA_URL;
-  const data = await ebayGet(
-    `${baseUrl}/marketplace/${marketplaceId}/get_shipping_carriers`,
-    accessToken
-  );
+const FALLBACK_SHIPPING_SERVICES = [
+  { carrierCode: 'USPS',  serviceCode: 'USPSFirstClass',          serviceName: 'USPS First Class',           serviceTypes: ['FLAT_RATE'] },
+  { carrierCode: 'USPS',  serviceCode: 'USPSPriority',            serviceName: 'USPS Priority Mail',         serviceTypes: ['FLAT_RATE'] },
+  { carrierCode: 'USPS',  serviceCode: 'USPSPriorityMailExpress', serviceName: 'USPS Priority Mail Express', serviceTypes: ['FLAT_RATE'] },
+  { carrierCode: 'USPS',  serviceCode: 'USPSParcelSelect',        serviceName: 'USPS Parcel Select',         serviceTypes: ['CALCULATED'] },
+  { carrierCode: 'UPS',   serviceCode: 'UPSGround',               serviceName: 'UPS Ground',                 serviceTypes: ['CALCULATED'] },
+  { carrierCode: 'UPS',   serviceCode: 'UPS2ndDayAir',            serviceName: 'UPS 2nd Day Air',            serviceTypes: ['CALCULATED'] },
+  { carrierCode: 'UPS',   serviceCode: 'UPSNextDayAir',           serviceName: 'UPS Next Day Air',           serviceTypes: ['CALCULATED'] },
+  { carrierCode: 'FedEx', serviceCode: 'FedExGround',             serviceName: 'FedEx Ground',               serviceTypes: ['CALCULATED'] },
+  { carrierCode: 'FedEx', serviceCode: 'FedEx2Day',               serviceName: 'FedEx 2Day',                 serviceTypes: ['CALCULATED'] },
+  { carrierCode: 'FedEx', serviceCode: 'FedExPriorityOvernight',  serviceName: 'FedEx Priority Overnight',   serviceTypes: ['CALCULATED'] },
+  { carrierCode: 'OTHER', serviceCode: 'FreightShipping',         serviceName: 'Freight Shipping',           serviceTypes: ['FLAT_RATE'] },
+  { carrierCode: 'OTHER', serviceCode: 'LocalPickup',             serviceName: 'Local Pickup',               serviceTypes: ['FLAT_RATE'] },
+];
 
-  const services = [];
-  (data.shippingCarriers ?? []).forEach((carrier) => {
-    (carrier.shippingServices ?? []).forEach((svc) => {
-      services.push({
-        carrierCode:  carrier.shippingCarrierCode,
-        serviceCode:  svc.shippingServiceCode,
-        serviceName:  svc.shippingServiceCode,
-        serviceTypes: svc.shippingServiceType ?? [],
+export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_US', sandbox = false) {
+  try {
+    const baseUrl = sandbox ? SANDBOX_METADATA_URL : EBAY_METADATA_URL;
+    const data = await ebayGet(
+      `${baseUrl}/marketplace/${marketplaceId}/get_shipping_carriers`,
+      accessToken
+    );
+
+    const services = [];
+    (data.shippingCarriers ?? []).forEach((carrier) => {
+      (carrier.shippingServices ?? []).forEach((svc) => {
+        services.push({
+          carrierCode:  carrier.shippingCarrierCode,
+          serviceCode:  svc.shippingServiceCode,
+          serviceName:  svc.shippingServiceCode,
+          serviceTypes: svc.shippingServiceType ?? [],
+        });
       });
     });
-  });
-  return services;
+
+    return services.length > 0 ? services : FALLBACK_SHIPPING_SERVICES;
+  } catch {
+    return FALLBACK_SHIPPING_SERVICES;
+  }
 }
 
 // ── Category aspects ──────────────────────────────────────────────────────────
