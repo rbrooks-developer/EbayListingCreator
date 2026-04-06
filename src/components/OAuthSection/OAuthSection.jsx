@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import {
-  fetchClientCredentialsToken,
-  fetchCategories,
-  fetchShippingServices,
-} from '../../services/ebayApi.js';
+import { buildAuthorizationUrl, isEbayConfigured } from '../../services/ebayApi.js';
 import styles from './OAuthSection.module.css';
 
 const MARKETPLACES = [
@@ -20,63 +16,23 @@ const MARKETPLACES = [
 /**
  * OAuthSection
  * Props:
- *  onConnected(data: { accessToken, categories, shippingServices, marketplace }) => void
- *  connectionData  — current connection data (null if not connected)
- *  onDisconnect()  => void
+ *  connectionData   — null | { marketplace, sandbox, ebayUsername, categories, categoryTreeId, shippingServices }
+ *  isExchanging     — bool  (App is mid-callback token exchange)
+ *  exchangeError    — string | null
+ *  onDisconnect()   => void
  */
-export default function OAuthSection({ onConnected, connectionData, onDisconnect }) {
-  const [credentials, setCredentials] = useState({
-    clientId: '',
-    clientSecret: '',
-    marketplace: 'EBAY_US',
-    sandbox: false,
-  });
+export default function OAuthSection({ connectionData, isExchanging, exchangeError, onDisconnect }) {
+  const [marketplace, setMarketplace] = useState('EBAY_US');
+  const [sandbox, setSandbox] = useState(false);
 
-  const [status, setStatus] = useState({ type: null, message: '' }); // type: 'loading'|'success'|'error'
-  const [progress, setProgress] = useState('');
-
+  const configured = isEbayConfigured(sandbox);
   const isConnected = connectionData !== null;
 
-  function handleChange(e) {
-    const { name, value, type, checked } = e.target;
-    setCredentials((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  }
-
-  async function handleConnect(e) {
-    e.preventDefault();
-    const { clientId, clientSecret, marketplace, sandbox } = credentials;
-
-    if (!clientId.trim() || !clientSecret.trim()) {
-      setStatus({ type: 'error', message: 'App ID and Client Secret are required.' });
-      return;
-    }
-
-    setStatus({ type: 'loading', message: '' });
-
-    try {
-      setProgress('Requesting access token...');
-      const tokenData = await fetchClientCredentialsToken(clientId.trim(), clientSecret.trim(), sandbox);
-      const { access_token } = tokenData;
-
-      setProgress('Downloading listing categories (this may take a moment)...');
-      const { categories, categoryTreeId } = await fetchCategories(access_token, marketplace, sandbox);
-
-      setProgress('Downloading shipping services...');
-      const shippingServices = await fetchShippingServices(access_token, marketplace, sandbox);
-
-      setProgress('');
-      setStatus({ type: 'success', message: '' });
-      onConnected({ accessToken: access_token, categories, categoryTreeId, shippingServices, marketplace });
-    } catch (err) {
-      setProgress('');
-      setStatus({ type: 'error', message: err.message });
-    }
-  }
-
-  function handleDisconnect() {
-    setStatus({ type: null, message: '' });
-    setCredentials((prev) => ({ ...prev, clientId: '', clientSecret: '' }));
-    onDisconnect();
+  function handleConnect() {
+    const url = buildAuthorizationUrl(sandbox);
+    // Store marketplace choice so we can use it after the OAuth redirect returns
+    sessionStorage.setItem('ebay_marketplace', marketplace);
+    window.location.href = url;
   }
 
   return (
@@ -85,120 +41,120 @@ export default function OAuthSection({ onConnected, connectionData, onDisconnect
         <div className={styles.header}>
           <div className={styles.headerTitle}>
             <span className={styles.stepBadge}>1</span>
-            <h2>Connect to eBay API</h2>
+            <h2>Connect Your eBay Account</h2>
           </div>
           <p className={styles.subtitle}>
-            Enter your eBay developer credentials to fetch listing categories and shipping options.
-            Your credentials are only stored in memory for this session.{' '}
-            <a
-              href="https://developer.ebay.com/my/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Get your keys
-            </a>
+            Authorize this app to access your eBay selling account. We'll download your
+            listing categories and shipping options so you can build listings below.
           </p>
         </div>
 
-        {isConnected ? (
-          <ConnectedState data={connectionData} onDisconnect={handleDisconnect} />
-        ) : (
-          <form className={styles.form} onSubmit={handleConnect} noValidate>
-            <div className={styles.fieldGrid}>
-              <div className={styles.field}>
-                <label htmlFor="clientId">App ID (Client ID)</label>
-                <input
-                  id="clientId"
-                  name="clientId"
-                  type="text"
-                  value={credentials.clientId}
-                  onChange={handleChange}
-                  placeholder="YourApp-12345-SandBox-abc..."
-                  autoComplete="off"
-                  disabled={status.type === 'loading'}
-                />
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="clientSecret">Client Secret (Cert ID)</label>
-                <input
-                  id="clientSecret"
-                  name="clientSecret"
-                  type="password"
-                  value={credentials.clientSecret}
-                  onChange={handleChange}
-                  placeholder="SBX-abc123..."
-                  autoComplete="off"
-                  disabled={status.type === 'loading'}
-                />
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="marketplace">Marketplace</label>
-                <select
-                  id="marketplace"
-                  name="marketplace"
-                  value={credentials.marketplace}
-                  onChange={handleChange}
-                  disabled={status.type === 'loading'}
-                >
-                  {MARKETPLACES.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.fieldCheckbox}>
-                <label>
-                  <input
-                    type="checkbox"
-                    name="sandbox"
-                    checked={credentials.sandbox}
-                    onChange={handleChange}
-                    disabled={status.type === 'loading'}
-                  />
-                  Use Sandbox environment
-                </label>
-              </div>
+        <div className={styles.body}>
+          {/* ── Mid-callback loading ── */}
+          {isExchanging && (
+            <div className={styles.stateBox}>
+              <span className={styles.spinner} aria-hidden="true" />
+              Completing eBay connection…
             </div>
+          )}
 
-            {status.type === 'error' && (
-              <div className={styles.alertError} role="alert">
-                <strong>Connection failed:</strong> {status.message}
-              </div>
-            )}
-
-            {status.type === 'loading' && progress && (
-              <div className={styles.alertInfo} role="status">
-                <span className={styles.spinner} aria-hidden="true" /> {progress}
-              </div>
-            )}
-
-            <div className={styles.actions}>
-              <button
-                type="submit"
-                className={styles.btnPrimary}
-                disabled={status.type === 'loading'}
-              >
-                {status.type === 'loading' ? 'Connecting...' : 'Connect to eBay'}
+          {/* ── Exchange error ── */}
+          {!isExchanging && exchangeError && (
+            <div className={styles.alertError} role="alert">
+              <strong>Connection failed:</strong> {exchangeError}
+              <button className={styles.retryBtn} onClick={() => window.location.href = window.location.pathname}>
+                Try Again
               </button>
             </div>
-          </form>
-        )}
+          )}
+
+          {/* ── Not configured ── */}
+          {!isExchanging && !exchangeError && !isConnected && !configured && (
+            <div className={styles.alertWarning} role="alert">
+              <strong>eBay API not configured.</strong> Add{' '}
+              <code>VITE_EBAY_CLIENT_ID</code>, <code>VITE_EBAY_CLIENT_SECRET</code>, and{' '}
+              <code>VITE_EBAY_RUNAME</code> to your <code>.env</code> file.{' '}
+              See <code>.env.example</code> for setup instructions.
+            </div>
+          )}
+
+          {/* ── Connected ── */}
+          {!isExchanging && !exchangeError && isConnected && (
+            <ConnectedState data={connectionData} onDisconnect={onDisconnect} />
+          )}
+
+          {/* ── Connect form ── */}
+          {!isExchanging && !exchangeError && !isConnected && (
+            <div className={styles.connectForm}>
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <label htmlFor="marketplace">Marketplace</label>
+                  <select
+                    id="marketplace"
+                    value={marketplace}
+                    onChange={(e) => setMarketplace(e.target.value)}
+                    disabled={!configured}
+                  >
+                    {MARKETPLACES.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className={styles.fieldCheckbox}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={sandbox}
+                      onChange={(e) => setSandbox(e.target.checked)}
+                    />
+                    Use Sandbox environment
+                  </label>
+                  {sandbox && !isEbayConfigured(true) && (
+                    <span className={styles.sandboxWarn}>
+                      Sandbox credentials not set in .env
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <button
+                className={styles.btnConnect}
+                onClick={handleConnect}
+                disabled={!configured}
+              >
+                <EbayIcon />
+                Connect Your eBay Account →
+              </button>
+
+              <p className={styles.permissionNote}>
+                You'll be taken to eBay to authorize access. We request permission to
+                read your account info and create/update listings on your behalf.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
 }
+
+// ── Connected state ───────────────────────────────────────────────────────────
 
 function ConnectedState({ data, onDisconnect }) {
   return (
     <div className={styles.connectedBox}>
       <div className={styles.connectedIcon} aria-hidden="true">&#10003;</div>
       <div className={styles.connectedDetails}>
-        <h3>Connected — {data.marketplace}</h3>
+        <h3>
+          Connected{data.ebayUsername ? ` — ${data.ebayUsername}` : ''}
+          {data.sandbox && <span className={styles.sandboxBadge}>Sandbox</span>}
+        </h3>
         <ul className={styles.statList}>
+          <li>
+            <span className={styles.statLabel}>Marketplace</span>
+            <span className={styles.statValue}>{data.marketplace}</span>
+          </li>
           <li>
             <span className={styles.statLabel}>Categories downloaded</span>
             <span className={styles.statValue}>{data.categories.length.toLocaleString()}</span>
@@ -209,12 +165,25 @@ function ConnectedState({ data, onDisconnect }) {
           </li>
         </ul>
         <p className={styles.connectedNote}>
-          Credentials are held in session memory only and will be cleared when you close this tab.
+          Your eBay token is held in session memory and will be cleared when you close this tab.
         </p>
       </div>
       <button className={styles.btnSecondary} onClick={onDisconnect}>
         Disconnect
       </button>
     </div>
+  );
+}
+
+// ── eBay wordmark icon ────────────────────────────────────────────────────────
+
+function EbayIcon() {
+  return (
+    <span className={styles.ebayWordmark} aria-hidden="true">
+      <span style={{ color: '#e53238' }}>e</span>
+      <span style={{ color: '#0064d2' }}>B</span>
+      <span style={{ color: '#f5af02' }}>a</span>
+      <span style={{ color: '#86b817' }}>y</span>
+    </span>
   );
 }
