@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { createEmptyListing, parseListingFile, exportListingsToExcel } from '../../utils/excelUtils.js';
+import { createListing } from '../../services/ebayApi.js';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
 import styles from './ListingGrid.module.css';
@@ -56,6 +57,7 @@ export default function ListingGrid({
   shippingServices = [],
   accessToken = null,
   sandbox = false,
+  marketplace = 'EBAY_US',
 }) {
   const [importErrors, setImportErrors] = useState([]);
   const [importStatus, setImportStatus] = useState('');
@@ -103,6 +105,20 @@ export default function ListingGrid({
 
   function updateAspects(id, aspects) {
     onChange(listings.map((l) => (l.id !== id ? l : { ...l, aspects })));
+  }
+
+  async function handlePost(id) {
+    const listing = listings.find((l) => l.id === id);
+    if (!listing || !accessToken) return;
+
+    onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'submitting', statusError: '' }));
+
+    try {
+      const { listingId } = await createListing(accessToken, listing, marketplace, sandbox);
+      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'success', listingId }));
+    } catch (e) {
+      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'error', statusError: e.message }));
+    }
   }
 
   function clearAll() {
@@ -207,6 +223,7 @@ export default function ListingGrid({
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th className={styles.colStatus}>Status</th>
                   <th className={styles.colTitle}>Title</th>
                   <th className={styles.colDescription}>Description</th>
                   <th className={styles.colCategory}>Category</th>
@@ -214,6 +231,7 @@ export default function ListingGrid({
                   <th className={styles.colQty}>Qty</th>
                   <th className={styles.colCondition}>Condition</th>
                   <th className={styles.colType}>Listing Type</th>
+                  <th className={styles.colPrice}>Price ($)</th>
                   <th className={styles.colAuctionStartPrice}>Start Price ($)</th>
                   <th className={styles.colAuctionDays}>Auction Days</th>
                   <th className={styles.colBestOffer}>Best Offer ($)</th>
@@ -222,6 +240,7 @@ export default function ListingGrid({
                   <th className={styles.colDimension}>W (in)</th>
                   <th className={styles.colDimension}>H (in)</th>
                   <th className={styles.colWeight}>Weight (lb)</th>
+                  <th className={styles.colImageUrl}>Image URL</th>
                   <th className={styles.colActions} aria-label="Actions" />
                 </tr>
               </thead>
@@ -237,7 +256,9 @@ export default function ListingGrid({
                     onUpdateCategory={updateCategory}
                     onRemove={removeRow}
                     onOpenAspects={setAspectsListingId}
+                    onPost={handlePost}
                     hasCategories={hasCategories}
+                    canPost={!!accessToken}
                   />
                 ))}
               </tbody>
@@ -281,15 +302,51 @@ export default function ListingGrid({
 
 // ── ListingRow ────────────────────────────────────────────────────────────────
 
-function ListingRow({ listing, categories, shippingServices, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, hasCategories }) {
+function ListingRow({ listing, categories, shippingServices, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onPost, hasCategories, canPost }) {
   const isAuction = listing.listingType === 'Auction';
-  const status = getAspectsStatus(listing, aspectsCache.current);
-  const statusCfg = STATUS_CONFIG[status];
+  const aspectsStatus = getAspectsStatus(listing, aspectsCache.current);
+  const statusCfg = STATUS_CONFIG[aspectsStatus];
+  const { postStatus, listingId, statusError } = listing;
 
   function field(name, value) { onUpdate(listing.id, name, value); }
 
   return (
     <tr className={styles.row}>
+      {/* Status */}
+      <td className={styles.colStatus}>
+        {postStatus === 'submitting' && (
+          <div className={styles.statusSubmitting}>
+            <span className={styles.statusSpinner} aria-hidden="true" />
+            Posting…
+          </div>
+        )}
+        {postStatus === 'success' && (
+          <div className={styles.statusSuccess}>
+            <span className={styles.statusBadge}>Listed</span>
+            <span className={styles.statusId} title={listingId}>{listingId}</span>
+          </div>
+        )}
+        {postStatus === 'error' && (
+          <div className={styles.statusError}>
+            <span className={styles.statusBadgeError}>Error</span>
+            <span className={styles.statusMsg} title={statusError}>{statusError}</span>
+            <button className={styles.retryBtn} onClick={() => onPost(listing.id)} disabled={!canPost}>
+              Retry
+            </button>
+          </div>
+        )}
+        {postStatus === 'new' && (
+          <button
+            className={styles.postBtn}
+            onClick={() => onPost(listing.id)}
+            disabled={!canPost || !listing.title || !listing.categoryId}
+            title={!canPost ? 'Connect to eBay first' : !listing.title ? 'Add a title' : !listing.categoryId ? 'Select a category' : 'Post to eBay'}
+          >
+            Post to eBay
+          </button>
+        )}
+      </td>
+
       {/* Title */}
       <td className={styles.colTitle}>
         <input
@@ -332,7 +389,7 @@ function ListingRow({ listing, categories, shippingServices, aspectsCache, onUpd
       {/* Specifics status + button */}
       <td className={styles.colSpecifics}>
         <button
-          className={`${styles.specificsBtn} ${styles[`specifics_${status}`]}`}
+          className={`${styles.specificsBtn} ${styles[`specifics_${aspectsStatus}`]}`}
           onClick={() => listing.categoryId && onOpenAspects(listing.id)}
           disabled={!listing.categoryId}
           title={statusCfg.title}
@@ -378,6 +435,24 @@ function ListingRow({ listing, categories, shippingServices, aspectsCache, onUpd
         >
           {LISTING_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
+      </td>
+
+      {/* Price (BIN) */}
+      <td className={styles.colPrice}>
+        {!isAuction ? (
+          <input
+            type="number"
+            className={styles.cellInput}
+            value={listing.price}
+            onChange={(e) => field('price', e.target.value)}
+            min={0}
+            step={0.01}
+            placeholder="0.00"
+            aria-label="Buy It Now price"
+          />
+        ) : (
+          <span className={styles.naText}>N/A</span>
+        )}
       </td>
 
       {/* Auction Start Price */}
@@ -499,6 +574,18 @@ function ListingRow({ listing, categories, shippingServices, aspectsCache, onUpd
           step={0.01}
           placeholder="0.00"
           aria-label="Weight (lbs)"
+        />
+      </td>
+
+      {/* Image URL */}
+      <td className={styles.colImageUrl}>
+        <input
+          type="url"
+          className={styles.cellInput}
+          value={listing.imageUrl}
+          onChange={(e) => field('imageUrl', e.target.value)}
+          placeholder="https://…"
+          aria-label="Image URL"
         />
       </td>
 

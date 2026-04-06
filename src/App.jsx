@@ -152,6 +152,7 @@ function AppContent() {
           shippingServices={connectionData?.shippingServices ?? []}
           accessToken={accessToken}
           sandbox={connectionData?.sandbox ?? false}
+          marketplace={connectionData?.marketplace ?? 'EBAY_US'}
         />
       </main>
 

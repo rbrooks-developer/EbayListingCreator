@@ -155,8 +155,14 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
 export function createEmptyListing() {
   return {
     id: crypto.randomUUID(),
+    // Submission status
+    postStatus: 'new',    // 'new' | 'submitting' | 'success' | 'error'
+    listingId: '',        // eBay listing ID on success
+    statusError: '',      // error message on failure
+    // Listing fields
     title: '',
     description: '',
+    price: '',            // Buy It Now price
     quantity: '1',
     condition: 'New',
     listingType: 'BuyItNow',
@@ -165,11 +171,12 @@ export function createEmptyListing() {
     bestOffer: '',
     categoryId: '',
     categoryName: '',
-    aspects: {}, // { [aspectName]: string | string[] }
+    aspects: {},
     shippingService: '',
     length: '',
     width: '',
     height: '',
     weight: '',
+    imageUrl: '',
   };
 }

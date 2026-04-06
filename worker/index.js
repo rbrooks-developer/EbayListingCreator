@@ -78,8 +78,9 @@ async function handle(request, env) {
   if (path.endsWith('/exchange')) return handleExchange(body, env);
   if (path.endsWith('/refresh'))  return handleRefresh(body, env);
   if (path.endsWith('/proxy'))    return handleProxy(body, env);
+  if (path.endsWith('/listing'))  return handleCreateListing(body, env);
 
-  return err('Unknown route — use /exchange, /refresh, or /proxy', 404, env);
+  return err('Unknown route — use /exchange, /refresh, /proxy, or /listing', 404, env);
 }
 
 // ── /exchange ─────────────────────────────────────────────────────────────────
@@ -151,6 +152,115 @@ async function handleProxy(body, env) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return err(data.error_description || data.error || `eBay ${res.status}`, res.status, env);
   return ok(data, env);
+}
+
+// ── /listing ──────────────────────────────────────────────────────────────────
+
+async function handleCreateListing(body, env) {
+  const { token, listing, marketplaceId = 'EBAY_US', sandbox = false } = body;
+  if (!token)   return err('Missing "token"', 400, env);
+  if (!listing) return err('Missing "listing"', 400, env);
+
+  const base = sandbox
+    ? 'https://api.sandbox.ebay.com'
+    : 'https://api.ebay.com';
+  const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  // ── 1. Fetch account policies ─────────────────────────────────────────────
+  const [fpRes, ppRes, rpRes] = await Promise.all([
+    fetch(`${base}/sell/account/v1/fulfillment_policy?marketplace_id=${marketplaceId}`, { headers: h }),
+    fetch(`${base}/sell/account/v1/payment_policy?marketplace_id=${marketplaceId}`,     { headers: h }),
+    fetch(`${base}/sell/account/v1/return_policy?marketplace_id=${marketplaceId}`,      { headers: h }),
+  ]);
+  const [fpData, ppData, rpData] = await Promise.all([
+    fpRes.json().catch(() => ({})),
+    ppRes.json().catch(() => ({})),
+    rpRes.json().catch(() => ({})),
+  ]);
+
+  const fulfillmentPolicyId = fpData.fulfillmentPolicies?.[0]?.fulfillmentPolicyId;
+  const paymentPolicyId     = ppData.paymentPolicies?.[0]?.paymentPolicyId;
+  const returnPolicyId      = rpData.returnPolicies?.[0]?.returnPolicyId;
+
+  if (!fulfillmentPolicyId || !paymentPolicyId || !returnPolicyId) {
+    const missing = [
+      !fulfillmentPolicyId && 'shipping',
+      !paymentPolicyId     && 'payment',
+      !returnPolicyId      && 'return',
+    ].filter(Boolean).join(', ');
+    return err(
+      `No ${missing} polic${missing.includes(',') ? 'ies' : 'y'} found in your eBay account. ` +
+      'Set up your business policies in eBay Seller Hub first.',
+      422, env
+    );
+  }
+
+  // ── 2. Create / update inventory item ────────────────────────────────────
+  const sku = listing.id;
+  const conditionMap = { New: 'NEW', Used: 'USED_GOOD' };
+
+  // Aspects must be arrays of strings
+  const aspects = {};
+  Object.entries(listing.aspects ?? {}).forEach(([k, v]) => {
+    aspects[k] = Array.isArray(v) ? v.map(String).filter(Boolean) : [String(v)];
+  });
+
+  const inventoryItem = {
+    availability: { shipToLocationAvailability: { quantity: parseInt(listing.quantity) || 1 } },
+    condition: conditionMap[listing.condition] ?? 'NEW',
+    product: {
+      title: listing.title,
+      description: listing.description || listing.title,
+      aspects,
+      ...(listing.imageUrl ? { imageUrls: [listing.imageUrl] } : {}),
+    },
+  };
+
+  const invRes = await fetch(`${base}/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
+    method: 'PUT', headers: h, body: JSON.stringify(inventoryItem),
+  });
+  if (!invRes.ok && invRes.status !== 204) {
+    const e = await invRes.json().catch(() => ({}));
+    return err(e.errors?.[0]?.message ?? `Inventory item error (${invRes.status})`, invRes.status, env);
+  }
+
+  // ── 3. Create offer ───────────────────────────────────────────────────────
+  const isAuction = listing.listingType === 'Auction';
+  const durationMap = { '3': 'DAYS_3', '5': 'DAYS_5', '7': 'DAYS_7', '10': 'DAYS_10' };
+
+  const offer = {
+    sku,
+    marketplaceId,
+    format: isAuction ? 'AUCTION' : 'FIXED_PRICE',
+    availableQuantity: parseInt(listing.quantity) || 1,
+    categoryId: listing.categoryId,
+    listingDescription: listing.description || listing.title,
+    listingPolicies: { fulfillmentPolicyId, paymentPolicyId, returnPolicyId },
+    pricingSummary: {
+      price: { currency: 'USD', value: String(isAuction ? (listing.auctionStartPrice || '0.99') : (listing.price || '0.00')) },
+      ...(listing.bestOffer && !isAuction ? { minimumAdvertisedPrice: { currency: 'USD', value: String(listing.bestOffer) } } : {}),
+    },
+    ...(isAuction ? { listingDuration: durationMap[String(listing.auctionDays)] ?? 'DAYS_7' } : {}),
+  };
+
+  const offerRes = await fetch(`${base}/sell/inventory/v1/offer`, {
+    method: 'POST', headers: h, body: JSON.stringify(offer),
+  });
+  const offerData = await offerRes.json().catch(() => ({}));
+  if (!offerRes.ok) {
+    return err(offerData.errors?.[0]?.message ?? `Offer error (${offerRes.status})`, offerRes.status, env);
+  }
+
+  // ── 4. Publish offer ──────────────────────────────────────────────────────
+  const publishRes = await fetch(`${base}/sell/inventory/v1/offer/${offerData.offerId}/publish`, {
+    method: 'POST', headers: h, body: '{}',
+  });
+  const publishData = await publishRes.json().catch(() => ({}));
+  if (!publishRes.ok) {
+    return err(publishData.errors?.[0]?.message ?? `Publish error (${publishRes.status})`, publishRes.status, env);
+  }
+
+  return ok({ listingId: publishData.listingId }, env);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

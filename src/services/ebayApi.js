@@ -203,6 +203,12 @@ export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_U
   }
 }
 
+// ── Create listing ────────────────────────────────────────────────────────────
+
+export async function createListing(accessToken, listing, marketplaceId, sandbox = false) {
+  return workerPost('listing', { token: accessToken, listing, marketplaceId, sandbox });
+}
+
 // ── Category aspects ──────────────────────────────────────────────────────────
 
 export async function fetchAspectsForCategory(accessToken, categoryTreeId, categoryId, sandbox = false) {
