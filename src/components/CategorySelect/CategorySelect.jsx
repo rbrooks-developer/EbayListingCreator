@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './CategorySelect.module.css';
 
-const MAX_RESULTS = 80;
+const MAX_RESULTS = 100;
 
 /**
- * Searchable category combobox.
+ * Category selector — opens a search modal similar to Item Specifics.
  * Props:
  *  categories: { categoryId, categoryName, fullPath }[]
  *  value: categoryId string ('' = none selected)
@@ -12,20 +12,88 @@ const MAX_RESULTS = 80;
  *  disabled: bool
  */
 export default function CategorySelect({ categories, value, onChange, disabled }) {
-  const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const inputRef = useRef(null);
-  const listRef = useRef(null);
-  const wrapperRef = useRef(null);
 
-  // Display the selected category's path when closed
   const selectedCategory = useMemo(
     () => (value ? categories.find((c) => c.categoryId === value) : null),
     [value, categories]
   );
 
-  // Filter results as user types
+  function handleClear(e) {
+    e.stopPropagation();
+    onChange('', '');
+  }
+
+  function handleSelect(cat) {
+    onChange(cat.categoryId, cat.categoryName);
+    setOpen(false);
+  }
+
+  return (
+    <>
+      {/* Trigger button in the table cell */}
+      <button
+        type="button"
+        className={`${styles.trigger} ${disabled ? styles.triggerDisabled : ''} ${!value ? styles.triggerEmpty : ''}`}
+        onClick={() => !disabled && setOpen(true)}
+        disabled={disabled}
+        title={selectedCategory?.fullPath ?? 'Select a category'}
+      >
+        <span className={styles.triggerText}>
+          {selectedCategory ? selectedCategory.fullPath : 'Select category…'}
+        </span>
+        <span className={styles.triggerIcons}>
+          {value && !disabled && (
+            <span
+              className={styles.clearBtn}
+              role="button"
+              aria-label="Clear category"
+              onClick={handleClear}
+              onKeyDown={(e) => e.key === 'Enter' && handleClear(e)}
+              tabIndex={0}
+            >
+              &#x2715;
+            </span>
+          )}
+          <span className={styles.chevron} aria-hidden="true">&#8964;</span>
+        </span>
+      </button>
+
+      {/* Modal */}
+      {open && (
+        <CategoryModal
+          categories={categories}
+          selectedId={value}
+          onSelect={handleSelect}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// ── CategoryModal ─────────────────────────────────────────────────────────────
+
+function CategoryModal({ categories, selectedId, onSelect, onClose }) {
+  const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const inputRef = useRef(null);
+  const listRef = useRef(null);
+  const overlayRef = useRef(null);
+
+  // Focus search input on open
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    function handler(e) { if (e.key === 'Escape') onClose(); }
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  // Filter results
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
@@ -34,50 +102,14 @@ export default function CategorySelect({ categories, value, onChange, disabled }
       .slice(0, MAX_RESULTS);
   }, [query, categories]);
 
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    function handler(e) {
-      if (!wrapperRef.current?.contains(e.target)) {
-        setOpen(false);
-        setQuery('');
-        setActiveIndex(-1);
-      }
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
   // Scroll active item into view
   useEffect(() => {
     if (activeIndex >= 0 && listRef.current) {
-      const item = listRef.current.children[activeIndex];
-      item?.scrollIntoView({ block: 'nearest' });
+      listRef.current.children[activeIndex]?.scrollIntoView({ block: 'nearest' });
     }
   }, [activeIndex]);
 
-  function openDropdown() {
-    if (disabled) return;
-    setOpen(true);
-    setQuery('');
-    setActiveIndex(-1);
-    setTimeout(() => inputRef.current?.focus(), 10);
-  }
-
-  function handleSelect(cat) {
-    onChange(cat.categoryId, cat.categoryName);
-    setOpen(false);
-    setQuery('');
-    setActiveIndex(-1);
-  }
-
-  function handleClear(e) {
-    e.stopPropagation();
-    onChange('', '');
-  }
-
   function handleKeyDown(e) {
-    if (!open) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActiveIndex((i) => Math.min(i + 1, results.length - 1));
@@ -86,48 +118,53 @@ export default function CategorySelect({ categories, value, onChange, disabled }
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter' && activeIndex >= 0) {
       e.preventDefault();
-      handleSelect(results[activeIndex]);
-    } else if (e.key === 'Escape') {
-      setOpen(false);
-      setQuery('');
+      onSelect(results[activeIndex]);
     }
   }
 
-  return (
-    <div ref={wrapperRef} className={styles.wrapper}>
-      {/* Trigger — shows selected value or placeholder */}
-      {!open && (
-        <button
-          type="button"
-          className={`${styles.trigger} ${disabled ? styles.triggerDisabled : ''} ${!value ? styles.triggerEmpty : ''}`}
-          onClick={openDropdown}
-          disabled={disabled}
-          title={selectedCategory?.fullPath ?? 'Select a category'}
-        >
-          <span className={styles.triggerText}>
-            {selectedCategory ? selectedCategory.fullPath : 'Select category…'}
-          </span>
-          <span className={styles.triggerIcons}>
-            {value && !disabled && (
-              <span
-                className={styles.clearBtn}
-                role="button"
-                aria-label="Clear category"
-                onClick={handleClear}
-                onKeyDown={(e) => e.key === 'Enter' && handleClear(e)}
-                tabIndex={0}
-              >
-                &#x2715;
-              </span>
-            )}
-            <span className={styles.chevron} aria-hidden="true">&#8964;</span>
-          </span>
-        </button>
-      )}
+  function handleOverlayClick(e) {
+    if (e.target === overlayRef.current) onClose();
+  }
 
-      {/* Search input — shown when open */}
-      {open && (
-        <div className={styles.searchWrapper}>
+  // Highlight matched query text in the path
+  function highlight(text) {
+    const q = query.trim();
+    if (!q) return text;
+    const idx = text.toLowerCase().indexOf(q.toLowerCase());
+    if (idx === -1) return text;
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark className={styles.mark}>{text.slice(idx, idx + q.length)}</mark>
+        {text.slice(idx + q.length)}
+      </>
+    );
+  }
+
+  return (
+    <div
+      ref={overlayRef}
+      className={styles.overlay}
+      onClick={handleOverlayClick}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Select Category"
+    >
+      <div className={styles.modal}>
+        {/* Header */}
+        <div className={styles.modalHeader}>
+          <div>
+            <h2 className={styles.modalTitle}>Select Category</h2>
+            <p className={styles.modalSubtitle}>
+              Search across {categories.length.toLocaleString()} eBay categories
+            </p>
+          </div>
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Close">&#x2715;</button>
+        </div>
+
+        {/* Search */}
+        <div className={styles.searchBar}>
+          <span className={styles.searchIcon} aria-hidden="true">&#128269;</span>
           <input
             ref={inputRef}
             type="text"
@@ -135,45 +172,55 @@ export default function CategorySelect({ categories, value, onChange, disabled }
             value={query}
             onChange={(e) => { setQuery(e.target.value); setActiveIndex(-1); }}
             onKeyDown={handleKeyDown}
-            placeholder="Type to search categories…"
+            placeholder="Search categories e.g. "video games", "sneakers", "cameras"…"
             aria-label="Search categories"
-            aria-expanded={true}
-            aria-autocomplete="list"
+            autoComplete="off"
           />
+          {query && (
+            <button className={styles.clearSearch} onClick={() => { setQuery(''); setActiveIndex(-1); inputRef.current?.focus(); }} aria-label="Clear search">
+              &#x2715;
+            </button>
+          )}
         </div>
-      )}
 
-      {/* Dropdown results */}
-      {open && (
-        <div className={styles.dropdown}>
+        {/* Results */}
+        <div className={styles.resultsArea}>
           {query.trim() === '' ? (
-            <div className={styles.hint}>Start typing to search {categories.length.toLocaleString()} categories</div>
+            <div className={styles.emptyPrompt}>
+              <span className={styles.emptyIcon} aria-hidden="true">&#128193;</span>
+              <p>Start typing to search categories</p>
+            </div>
           ) : results.length === 0 ? (
-            <div className={styles.hint}>No categories found for "{query}"</div>
+            <div className={styles.emptyPrompt}>
+              <span className={styles.emptyIcon} aria-hidden="true">&#128269;</span>
+              <p>No categories found for "<strong>{query}</strong>"</p>
+            </div>
           ) : (
             <>
-              <ul ref={listRef} className={styles.list} role="listbox">
+              <ul ref={listRef} className={styles.resultList} role="listbox">
                 {results.map((cat, i) => (
                   <li
                     key={cat.categoryId}
                     role="option"
-                    aria-selected={cat.categoryId === value}
-                    className={`${styles.option} ${i === activeIndex ? styles.optionActive : ''} ${cat.categoryId === value ? styles.optionSelected : ''}`}
-                    onMouseDown={() => handleSelect(cat)}
+                    aria-selected={cat.categoryId === selectedId}
+                    className={`${styles.resultItem} ${i === activeIndex ? styles.resultActive : ''} ${cat.categoryId === selectedId ? styles.resultSelected : ''}`}
+                    onMouseDown={() => onSelect(cat)}
                     onMouseEnter={() => setActiveIndex(i)}
                   >
-                    <span className={styles.optionPath}>{cat.fullPath}</span>
-                    <span className={styles.optionId}>#{cat.categoryId}</span>
+                    <span className={styles.resultPath}>{highlight(cat.fullPath)}</span>
+                    <span className={styles.resultId}>#{cat.categoryId}</span>
                   </li>
                 ))}
               </ul>
               {results.length === MAX_RESULTS && (
-                <div className={styles.hint}>Showing first {MAX_RESULTS} results — refine your search</div>
+                <p className={styles.resultFooter}>
+                  Showing first {MAX_RESULTS} results — refine your search to narrow down
+                </p>
               )}
             </>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
