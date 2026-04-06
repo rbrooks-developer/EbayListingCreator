@@ -152,7 +152,10 @@ export async function fetchCategories(accessToken, marketplaceId = 'EBAY_US', sa
       node.childCategoryTreeNodes.forEach((child) => walk(child, path));
     }
   }
-  if (tree.rootCategoryNode) walk(tree.rootCategoryNode);
+  // Skip the root node itself — start from its children so "Root >" is not in every path
+  if (tree.rootCategoryNode) {
+    (tree.rootCategoryNode.childCategoryTreeNodes ?? []).forEach((child) => walk(child, []));
+  }
 
   return { categories, categoryTreeId };
 }

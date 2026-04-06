@@ -9,6 +9,7 @@ import AuthModal from './components/AuthModal/AuthModal.jsx';
 import { useSessionStorage } from './hooks/useSessionStorage.js';
 import {
   exchangeCodeForTokens,
+  refreshAccessToken,
   fetchUserInfo,
   fetchCategories,
   fetchShippingServices,
@@ -33,6 +34,16 @@ function AppContent() {
 
   // ── Listings ────────────────────────────────────────────────────────────
   const [listings, setListings] = useState([]);
+
+  // ── Restore access token after page refresh ────────────────────────────
+  // connectionData survives in sessionStorage but accessToken is in React state.
+  // If we have connection metadata but no token, silently refresh it.
+  useEffect(() => {
+    if (!connectionData || accessToken) return;
+    refreshAccessToken(connectionData.sandbox)
+      .then((token) => setAccessToken(token))
+      .catch(() => {}); // refresh token expired — user will need to reconnect
+  }, [connectionData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handle OAuth callback on mount ──────────────────────────────────────
   useEffect(() => {
