@@ -9,8 +9,8 @@ export const isSupabaseConfigured =
   !supabaseUrl.includes('placeholder');
 
 export const supabase = createClient(
-  supabaseUrl ?? 'https://placeholder.supabase.co',
-  supabaseAnonKey ?? 'placeholder'
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder'
 );
 
 function assertConfigured() {
