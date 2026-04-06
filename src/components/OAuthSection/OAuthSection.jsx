@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { buildAuthorizationUrl, isEbayConfigured, detectConfiguredEnvironment } from '../../services/ebayApi.js';
+import EbayConfigModal from '../EbayConfigModal/EbayConfigModal.jsx';
 import styles from './OAuthSection.module.css';
 
 const MARKETPLACES = [
@@ -23,6 +24,8 @@ const MARKETPLACES = [
  */
 export default function OAuthSection({ connectionData, isExchanging, exchangeError, onDisconnect }) {
   const [marketplace, setMarketplace] = useState('EBAY_US');
+  const [configOpen, setConfigOpen] = useState(false);
+  const [, forceUpdate] = useState(0);
 
   // Auto-detect whether the configured App ID is sandbox or production
   const detectedEnv = detectConfiguredEnvironment(); // 'sandbox' | 'production' | 'none'
@@ -30,6 +33,11 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
 
   const configured = isEbayConfigured(sandbox);
   const isConnected = connectionData !== null;
+
+  function handleConfigSaved(saved) {
+    setConfigOpen(false);
+    if (saved) forceUpdate((n) => n + 1); // re-evaluate isEbayConfigured after save
+  }
 
   // Warn when the checkbox doesn't match the App ID's actual environment
   const envMismatch =
@@ -51,6 +59,9 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
           <div className={styles.headerTitle}>
             <span className={styles.stepBadge}>1</span>
             <h2>Connect Your eBay Account</h2>
+            <button className={styles.configureBtn} onClick={() => setConfigOpen(true)} title="Configure eBay API credentials">
+              &#9881; Configure
+            </button>
           </div>
           <p className={styles.subtitle}>
             Authorize this app to access your eBay selling account. We'll download your
@@ -80,10 +91,11 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
           {/* ── Not configured ── */}
           {!isExchanging && !exchangeError && !isConnected && !configured && (
             <div className={styles.alertWarning} role="alert">
-              <strong>eBay API not configured.</strong> Add{' '}
-              <code>VITE_EBAY_CLIENT_ID</code>, <code>VITE_EBAY_RUNAME</code>, and{' '}
-              <code>VITE_TOKEN_WORKER_URL</code> to your <code>.env</code> file.{' '}
-              See <code>.env.example</code> for setup instructions.
+              <strong>eBay API not configured.</strong>{' '}
+              Enter your eBay developer credentials and Worker URL to get started.
+              <button className={styles.retryBtn} style={{ background: 'var(--warning)', marginTop: '0.5rem', display: 'block' }} onClick={() => setConfigOpen(true)}>
+                Configure eBay API
+              </button>
             </div>
           )}
 
@@ -154,6 +166,7 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
           )}
         </div>
       </div>
+      {configOpen && <EbayConfigModal onClose={handleConfigSaved} />}
     </section>
   );
 }

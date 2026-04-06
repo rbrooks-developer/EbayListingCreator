@@ -43,6 +43,24 @@
   flex-shrink: 0;
 }
 
+.configureBtn {
+  margin-left: auto;
+  padding: 0.3rem 0.75rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.configureBtn:hover {
+  border-color: var(--ebay-blue);
+  color: var(--ebay-blue);
+}
+
 .subtitle {
   color: var(--text-secondary);
   font-size: 0.9rem;

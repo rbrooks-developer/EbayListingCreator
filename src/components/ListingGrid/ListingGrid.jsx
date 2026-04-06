@@ -335,16 +335,21 @@ function ListingRow({ listing, categories, shippingServices, aspectsCache, onUpd
             </button>
           </div>
         )}
-        {postStatus === 'new' && (
-          <button
-            className={styles.postBtn}
-            onClick={() => onPost(listing.id)}
-            disabled={!canPost || !listing.title || !listing.categoryId}
-            title={!canPost ? 'Connect to eBay first' : !listing.title ? 'Add a title' : !listing.categoryId ? 'Select a category' : 'Post to eBay'}
-          >
-            Post to eBay
-          </button>
-        )}
+        {postStatus === 'new' && (() => {
+          const reason = !canPost ? 'Connect to eBay (Step 1)' : !listing.title ? 'Title required' : !listing.categoryId ? 'Category required' : null;
+          return (
+            <>
+              <button
+                className={styles.postBtn}
+                onClick={() => onPost(listing.id)}
+                disabled={!!reason}
+              >
+                Post to eBay
+              </button>
+              {reason && <span className={styles.postHint}>{reason}</span>}
+            </>
+          );
+        })()}
       </td>
 
       {/* Title */}

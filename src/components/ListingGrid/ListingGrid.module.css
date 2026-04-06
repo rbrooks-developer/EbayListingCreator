@@ -446,6 +446,14 @@
 
 .retryBtn:hover:not(:disabled) { background: var(--error-bg); }
 
+.postHint {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  line-height: 1.3;
+}
+
 /* ── Specifics button ────────────────────────────────────────────────────── */
 
 .specificsBtn {
