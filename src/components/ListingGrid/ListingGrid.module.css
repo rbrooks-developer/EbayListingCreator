@@ -8,7 +8,6 @@
   background: var(--bg-white);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
-  overflow: hidden;
 }
 
 /* Header */
