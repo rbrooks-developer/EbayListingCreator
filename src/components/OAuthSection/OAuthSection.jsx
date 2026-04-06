@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { buildAuthorizationUrl, isEbayConfigured } from '../../services/ebayApi.js';
+import { buildAuthorizationUrl, isEbayConfigured, detectConfiguredEnvironment } from '../../services/ebayApi.js';
 import styles from './OAuthSection.module.css';
 
 const MARKETPLACES = [
@@ -23,10 +23,19 @@ const MARKETPLACES = [
  */
 export default function OAuthSection({ connectionData, isExchanging, exchangeError, onDisconnect }) {
   const [marketplace, setMarketplace] = useState('EBAY_US');
-  const [sandbox, setSandbox] = useState(false);
+
+  // Auto-detect whether the configured App ID is sandbox or production
+  const detectedEnv = detectConfiguredEnvironment(); // 'sandbox' | 'production' | 'none'
+  const [sandbox, setSandbox] = useState(detectedEnv === 'sandbox');
 
   const configured = isEbayConfigured(sandbox);
   const isConnected = connectionData !== null;
+
+  // Warn when the checkbox doesn't match the App ID's actual environment
+  const envMismatch =
+    configured &&
+    ((sandbox && detectedEnv === 'production') ||
+     (!sandbox && detectedEnv === 'sandbox'));
 
   function handleConnect() {
     const url = buildAuthorizationUrl(sandbox);
@@ -110,7 +119,17 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
                     />
                     Use Sandbox environment
                   </label>
-                  {sandbox && !isEbayConfigured(true) && (
+                  {detectedEnv !== 'none' && (
+                    <span className={`${styles.envBadge} ${detectedEnv === 'sandbox' ? styles.envBadgeSandbox : styles.envBadgeProd}`}>
+                      {detectedEnv === 'sandbox' ? 'Sandbox credentials detected' : 'Production credentials detected'}
+                    </span>
+                  )}
+                  {envMismatch && (
+                    <span className={styles.sandboxWarn}>
+                      ⚠ Checkbox doesn't match the App ID — eBay will reject the request.
+                    </span>
+                  )}
+                  {sandbox && !isEbayConfigured(true) && !envMismatch && (
                     <span className={styles.sandboxWarn}>
                       Sandbox credentials not set in .env
                     </span>

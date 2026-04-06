@@ -47,6 +47,29 @@ export function isEbayConfigured(sandbox = false) {
   return !!(clientId && clientSecret && ruName);
 }
 
+/**
+ * Detect whether an App ID string is a Sandbox credential.
+ * eBay Sandbox App IDs always contain "-SBX-" in their name.
+ */
+function isSandboxAppId(clientId = '') {
+  return clientId.toUpperCase().includes('-SBX-');
+}
+
+/**
+ * Return the environment the configured credentials belong to.
+ * 'sandbox' | 'production' | 'none'
+ */
+export function detectConfiguredEnvironment() {
+  const prodId    = import.meta.env.VITE_EBAY_CLIENT_ID    ?? '';
+  const sandboxId = import.meta.env.VITE_EBAY_SANDBOX_CLIENT_ID ?? '';
+
+  // If only sandbox creds exist, or both sets are sandbox IDs → sandbox
+  if (!prodId && sandboxId) return 'sandbox';
+  if (prodId && isSandboxAppId(prodId)) return 'sandbox';
+  if (prodId && !isSandboxAppId(prodId)) return 'production';
+  return 'none';
+}
+
 // ── Authorization URL ─────────────────────────────────────────────────────────
 
 /**

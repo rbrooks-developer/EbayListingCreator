@@ -199,6 +199,27 @@
   accent-color: var(--ebay-blue);
 }
 
+.envBadge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15em 0.55em;
+  border-radius: 100px;
+  letter-spacing: 0.03em;
+}
+
+.envBadgeSandbox {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid #ffcc80;
+}
+
+.envBadgeProd {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid #a5d6a7;
+}
+
 .sandboxWarn {
   font-size: 0.75rem;
   color: var(--warning);
