@@ -213,11 +213,11 @@ export async function fetchAspectsForCategory(accessToken, categoryTreeId, categ
   );
 
   return (data.aspects ?? []).map((a) => ({
-    aspectName:        a.localAspect?.aspectName ?? '',
+    aspectName:        a.localizedAspectName ?? '',
     aspectRequired:    a.aspectConstraint?.aspectRequired === true,
     aspectUsage:       a.aspectConstraint?.aspectUsage ?? 'OPTIONAL',
     aspectMode:        a.aspectConstraint?.aspectMode ?? 'FREE_TEXT',
     aspectCardinality: a.aspectConstraint?.itemToAspectCardinality ?? 'SINGLE',
-    aspectValues:      (a.localAspect?.aspectValues ?? []).map((v) => v.localValue),
+    aspectValues:      (a.aspectValues ?? []).map((v) => v.localizedValue ?? ''),
   }));
 }
