@@ -172,7 +172,7 @@ function CategoryModal({ categories, selectedId, onSelect, onClose }) {
             value={query}
             onChange={(e) => { setQuery(e.target.value); setActiveIndex(-1); }}
             onKeyDown={handleKeyDown}
-            placeholder="Search categories e.g. "video games", "sneakers", "cameras"…"
+            placeholder={'Search categories e.g. "video games", "sneakers", "cameras"…'}
             aria-label="Search categories"
             autoComplete="off"
           />
