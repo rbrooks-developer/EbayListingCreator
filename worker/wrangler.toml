@@ -7,7 +7,7 @@ compatibility_date = "2024-01-01"
 # Set this to your GitHub Pages URL in production.
 # Use * only for local testing.
 [vars]
-ALLOWED_ORIGIN = "https://rbrooks-developer.github.io"
+ALLOWED_ORIGIN = "*"
 
 # ── Secrets ────────────────────────────────────────────────────────────────────
 # Do NOT put secrets in this file. Set them with:
