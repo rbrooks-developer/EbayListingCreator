@@ -29,21 +29,18 @@ const USER_SCOPES = [
   'https://api.ebay.com/oauth/api_scope/commerce.identity.readonly',
 ].join(' ');
 
-// ── Config helpers ────────────────────────────────────────────────────────────
-
-import { getEbayConfig } from './ebayConfig.js';
+// ── Env helpers ───────────────────────────────────────────────────────────────
 
 function getEnv(sandbox) {
-  const cfg = getEbayConfig();
   return {
-    clientId: sandbox ? cfg.sandboxClientId : cfg.clientId,
-    ruName:   sandbox ? cfg.sandboxRuName   : cfg.ruName,
+    clientId: sandbox ? import.meta.env.VITE_EBAY_SANDBOX_CLIENT_ID : import.meta.env.VITE_EBAY_CLIENT_ID,
+    ruName:   sandbox ? import.meta.env.VITE_EBAY_SANDBOX_RUNAME    : import.meta.env.VITE_EBAY_RUNAME,
   };
 }
 
 export function isEbayConfigured(sandbox = false) {
   const { clientId, ruName } = getEnv(sandbox);
-  const { workerUrl } = getEbayConfig();
+  const workerUrl = import.meta.env.VITE_TOKEN_WORKER_URL;
   return !!(clientId && ruName && workerUrl);
 }
 
@@ -52,7 +49,8 @@ function isSandboxAppId(clientId = '') {
 }
 
 export function detectConfiguredEnvironment() {
-  const { clientId: prodId, sandboxClientId: sandboxId } = getEbayConfig();
+  const prodId    = import.meta.env.VITE_EBAY_CLIENT_ID             || '';
+  const sandboxId = import.meta.env.VITE_EBAY_SANDBOX_CLIENT_ID     || '';
 
   if (!prodId && sandboxId) return 'sandbox';
   if (prodId && isSandboxAppId(prodId)) return 'sandbox';
@@ -82,9 +80,9 @@ export function buildAuthorizationUrl(sandbox = false) {
 // ── Worker helpers ────────────────────────────────────────────────────────────
 
 function getWorkerUrl() {
-  const { workerUrl } = getEbayConfig();
-  if (!workerUrl) throw new Error('Worker URL not configured. Click "Configure eBay API" to set it up.');
-  return workerUrl.replace(/\/$/, '');
+  const url = import.meta.env.VITE_TOKEN_WORKER_URL;
+  if (!url) throw new Error('VITE_TOKEN_WORKER_URL is not configured.');
+  return url.replace(/\/$/, '');
 }
 
 async function workerPost(route, payload) {
