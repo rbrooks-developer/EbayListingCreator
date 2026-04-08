@@ -253,7 +253,7 @@ async function handleCreateListing(body, env) {
 
   // ── 4. Publish offer ──────────────────────────────────────────────────────
   const publishRes = await fetch(`${base}/sell/inventory/v1/offer/${offerData.offerId}/publish`, {
-    method: 'POST', headers: h, body: '{}',
+    method: 'POST', headers: { Authorization: h.Authorization },
   });
   const publishData = await publishRes.json().catch(() => ({}));
   if (!publishRes.ok) {
