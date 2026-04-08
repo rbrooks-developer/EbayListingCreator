@@ -164,7 +164,7 @@ async function handleCreateListing(body, env) {
   const base = sandbox
     ? 'https://api.sandbox.ebay.com'
     : 'https://api.ebay.com';
-  const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'Content-Language': 'en-US' };
 
   // ── 1. Fetch account policies ─────────────────────────────────────────────
   const [fpRes, ppRes, rpRes] = await Promise.all([
