@@ -185,15 +185,14 @@ export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_U
       accessToken
     );
 
-    const services = [];
-    (data.shippingServices ?? []).forEach((svc) => {
-      services.push({
-        carrierCode:  svc.shippingCarrierCode,
-        serviceCode:  svc.shippingServiceCode,
-        serviceName:  svc.shippingServiceCode,
-        serviceTypes: svc.shippingServiceType ?? [],
-      });
-    });
+    const services = (data.shippingServices ?? [])
+      .filter((svc) => svc.validForSellingFlow && !svc.internationalService)
+      .map((svc) => ({
+        carrierCode:  svc.shippingCarrier ?? '',
+        serviceCode:  svc.shippingService,
+        serviceName:  svc.description ?? svc.shippingService,
+        serviceTypes: svc.shippingCostTypes ?? [],
+      }));
 
     return services.length > 0 ? services : FALLBACK_SHIPPING_SERVICES;
   } catch {
