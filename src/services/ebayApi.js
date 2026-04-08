@@ -15,10 +15,10 @@ const SANDBOX_AUTH_URL = 'https://auth.sandbox.ebay.com/oauth2/authorize';
 const EBAY_IDENTITY_URL    = 'https://apiz.ebay.com/commerce/identity/v1/user/';
 const EBAY_TAXONOMY_URL    = 'https://api.ebay.com/commerce/taxonomy/v1';
 const EBAY_METADATA_URL    = 'https://api.ebay.com/sell/metadata/v1';
+const SANDBOX_METADATA_URL = 'https://api.sandbox.ebay.com/sell/metadata/v1';
 
 const SANDBOX_IDENTITY_URL = 'https://apiz.sandbox.ebay.com/commerce/identity/v1/user/';
 const SANDBOX_TAXONOMY_URL = 'https://api.sandbox.ebay.com/commerce/taxonomy/v1';
-const SANDBOX_METADATA_URL = 'https://api.sandbox.ebay.com/sell/metadata/v1';
 
 // Scopes required to create/update listings on behalf of a seller
 const USER_SCOPES = [
@@ -181,19 +181,17 @@ export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_U
   try {
     const baseUrl = sandbox ? SANDBOX_METADATA_URL : EBAY_METADATA_URL;
     const data = await ebayGet(
-      `${baseUrl}/marketplace/${marketplaceId}/get_shipping_carriers`,
+      `${baseUrl}/shipping/marketplace/${marketplaceId}/get_shipping_services`,
       accessToken
     );
 
     const services = [];
-    (data.shippingCarriers ?? []).forEach((carrier) => {
-      (carrier.shippingServices ?? []).forEach((svc) => {
-        services.push({
-          carrierCode:  carrier.shippingCarrierCode,
-          serviceCode:  svc.shippingServiceCode,
-          serviceName:  svc.shippingServiceCode,
-          serviceTypes: svc.shippingServiceType ?? [],
-        });
+    (data.shippingServices ?? []).forEach((svc) => {
+      services.push({
+        carrierCode:  svc.shippingCarrierCode,
+        serviceCode:  svc.shippingServiceCode,
+        serviceName:  svc.shippingServiceCode,
+        serviceTypes: svc.shippingServiceType ?? [],
       });
     });
 
