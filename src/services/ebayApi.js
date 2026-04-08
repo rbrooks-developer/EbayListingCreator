@@ -185,14 +185,21 @@ export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_U
       accessToken
     );
 
+    const ALLOWED_CARRIERS = new Set(['USPS', 'UPS', 'FEDEX']);
+
     const services = (data.shippingServices ?? [])
-      .filter((svc) => svc.validForSellingFlow && !svc.internationalService)
+      .filter((svc) =>
+        svc.validForSellingFlow &&
+        !svc.internationalService &&
+        ALLOWED_CARRIERS.has(svc.shippingCarrier)
+      )
       .map((svc) => ({
-        carrierCode:  svc.shippingCarrier ?? '',
+        carrierCode:  svc.shippingCarrier,
         serviceCode:  svc.shippingService,
         serviceName:  svc.description ?? svc.shippingService,
         serviceTypes: svc.shippingCostTypes ?? [],
-      }));
+      }))
+      .sort((a, b) => a.serviceName.localeCompare(b.serviceName));
 
     return services.length > 0 ? services : FALLBACK_SHIPPING_SERVICES;
   } catch {
