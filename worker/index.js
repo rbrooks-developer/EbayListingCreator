@@ -235,6 +235,7 @@ async function handleCreateListing(body, env) {
     availableQuantity: parseInt(listing.quantity) || 1,
     categoryId: listing.categoryId,
     listingDescription: listing.description || listing.title,
+    merchantLocationKey: 'default',
     listingPolicies: { fulfillmentPolicyId, paymentPolicyId, returnPolicyId },
     pricingSummary: {
       price: { currency: 'USD', value: String(isAuction ? (listing.auctionStartPrice || '0.99') : (listing.price || '0.00')) },
