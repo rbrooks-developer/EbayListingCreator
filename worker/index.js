@@ -75,12 +75,13 @@ async function handle(request, env) {
   try { body = await request.json(); }
   catch { return err('Invalid JSON body', 400, env); }
 
-  if (path.endsWith('/exchange')) return handleExchange(body, env);
-  if (path.endsWith('/refresh'))  return handleRefresh(body, env);
-  if (path.endsWith('/proxy'))    return handleProxy(body, env);
-  if (path.endsWith('/listing'))  return handleCreateListing(body, env);
+  if (path.endsWith('/exchange'))     return handleExchange(body, env);
+  if (path.endsWith('/refresh'))      return handleRefresh(body, env);
+  if (path.endsWith('/proxy'))        return handleProxy(body, env);
+  if (path.endsWith('/listing'))      return handleCreateListing(body, env);
+  if (path.endsWith('/upload-image')) return handleUploadImage(body, env);
 
-  return err('Unknown route — use /exchange, /refresh, /proxy, or /listing', 404, env);
+  return err('Unknown route — use /exchange, /refresh, /proxy, /listing, or /upload-image', 404, env);
 }
 
 // ── /exchange ─────────────────────────────────────────────────────────────────
@@ -246,7 +247,7 @@ async function handleCreateListing(body, env) {
     </ItemSpecifics>`;
 
   // ── Shipping / Return — business policies OR legacy inline ────────────────
-  const hasPackageInfo = !!(listing.length && listing.width && listing.height && listing.weight);
+  const hasPackageInfo = !!(listing.length && listing.width && listing.height && (listing.weightLbs || listing.weightOz));
   let shippingXml = '';
   let returnPolicyXml = '';
   let sellerProfilesXml = '';
@@ -274,8 +275,8 @@ async function handleCreateListing(body, env) {
       <PackageDepth>${listing.height}</PackageDepth>
       <PackageLength>${listing.length}</PackageLength>
       <PackageWidth>${listing.width}</PackageWidth>
-      <WeightMajor>${Math.floor(parseFloat(listing.weight) || 0)}</WeightMajor>
-      <WeightMinor>${Math.round(((parseFloat(listing.weight) || 0) % 1) * 16)}</WeightMinor>
+      <WeightMajor>${parseInt(listing.weightLbs) || 0}</WeightMajor>
+      <WeightMinor>${parseInt(listing.weightOz) || 0}</WeightMinor>
     </ShippingDetails>` : `
     <ShippingDetails>
       <ShippingType>Flat</ShippingType>
@@ -301,14 +302,15 @@ async function handleCreateListing(body, env) {
       <PackageDepth>${listing.height}</PackageDepth>
       <PackageLength>${listing.length}</PackageLength>
       <PackageWidth>${listing.width}</PackageWidth>
-      <WeightMajor>${Math.floor(parseFloat(listing.weight) || 0)}</WeightMajor>
-      <WeightMinor>${Math.round(((parseFloat(listing.weight) || 0) % 1) * 16)}</WeightMinor>
+      <WeightMajor>${parseInt(listing.weightLbs) || 0}</WeightMajor>
+      <WeightMinor>${parseInt(listing.weightOz) || 0}</WeightMinor>
     </ShippingPackageDetails>` : '';
 
   // ── Pictures ──────────────────────────────────────────────────────────────
-  const pictureXml = listing.imageUrl ? `
+  const readyImages = (listing.images ?? []).filter((img) => img.ebayUrl);
+  const pictureXml = readyImages.length > 0 ? `
     <PictureDetails>
-      <PictureURL>${xmlEscape(listing.imageUrl)}</PictureURL>
+      ${readyImages.map((img) => `<PictureURL>${xmlEscape(img.ebayUrl)}</PictureURL>`).join('\n      ')}
     </PictureDetails>` : '';
 
   // ── Best Offer ────────────────────────────────────────────────────────────
@@ -377,6 +379,64 @@ async function handleCreateListing(body, env) {
   }
 
   return ok({ listingId: itemId }, env);
+}
+
+// ── /upload-image (eBay EPS) ──────────────────────────────────────────────────
+
+async function handleUploadImage(body, env) {
+  const { token, imageBase64, imageName = 'image.jpg', mimeType = 'image/jpeg', sandbox = false } = body;
+  if (!token)       return err('Missing "token"', 400, env);
+  if (!imageBase64) return err('Missing "imageBase64"', 400, env);
+
+  const clientId     = sandbox ? env.EBAY_SANDBOX_CLIENT_ID     : env.EBAY_CLIENT_ID;
+  const clientSecret = sandbox ? env.EBAY_SANDBOX_CLIENT_SECRET : env.EBAY_CLIENT_SECRET;
+  const devId        = env.EBAY_DEV_ID;
+  if (!devId) return err('EBAY_DEV_ID secret not set', 500, env);
+
+  // Decode base64 → binary blob
+  const binaryStr = atob(imageBase64);
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+  const imageBlob = new Blob([bytes], { type: mimeType });
+
+  const pictureName = imageName.replace(/\.[^.]+$/, ''); // strip extension
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<UploadSiteHostedPicturesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${token}</eBayAuthToken>
+  </RequesterCredentials>
+  <PictureName>${xmlEscape(pictureName)}</PictureName>
+</UploadSiteHostedPicturesRequest>`;
+
+  const form = new FormData();
+  form.append('XMLPayload', new Blob([xml], { type: 'text/xml' }), 'payload.xml');
+  form.append('image', imageBlob, imageName);
+
+  const apiUrl = sandbox ? TRADING_API_SANDBOX_URL : TRADING_API_URL;
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'X-EBAY-API-COMPATIBILITY-LEVEL': '1263',
+      'X-EBAY-API-DEV-NAME':            devId,
+      'X-EBAY-API-APP-NAME':            clientId,
+      'X-EBAY-API-CERT-NAME':           clientSecret,
+      'X-EBAY-API-CALL-NAME':           'UploadSiteHostedPictures',
+      'X-EBAY-API-SITEID':              '0',
+    },
+    body: form,
+  });
+
+  const text = await res.text();
+  const ack      = text.match(/<Ack>(.*?)<\/Ack>/)?.[1];
+  const fullUrl  = text.match(/<FullURL>(.*?)<\/FullURL>/)?.[1];
+  const shortMsg = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/)?.[1];
+  const longMsg  = text.match(/<LongMessage>(.*?)<\/LongMessage>/)?.[1];
+
+  if ((ack !== 'Success' && ack !== 'Warning') || !fullUrl) {
+    return err(longMsg || shortMsg || 'Image upload failed', 400, env);
+  }
+
+  return ok({ url: fullUrl }, env);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

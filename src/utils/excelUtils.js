@@ -177,7 +177,8 @@ export function createEmptyListing() {
     length: '',
     width: '',
     height: '',
-    weight: '',
-    imageUrl: '',
+    weightLbs: '',
+    weightOz: '',
+    images: [],  // [{ id, name, previewUrl, ebayUrl, status, error }]
   };
 }

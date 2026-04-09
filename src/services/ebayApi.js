@@ -228,6 +228,31 @@ export async function fetchFulfillmentPolicies(accessToken, marketplaceId = 'EBA
   }
 }
 
+// ── Upload image to eBay EPS ──────────────────────────────────────────────────
+
+export async function uploadImage(accessToken, file, sandbox = false) {
+  const MAX_BYTES = 7 * 1024 * 1024; // 7 MB — eBay EPS limit
+  if (file.size > MAX_BYTES) throw new Error(`"${file.name}" exceeds the 7 MB limit.`);
+
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  // process in chunks to avoid call-stack overflow on large files
+  for (let i = 0; i < bytes.byteLength; i += 8192) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  }
+  const imageBase64 = btoa(binary);
+
+  const data = await workerPost('upload-image', {
+    token: accessToken,
+    imageBase64,
+    imageName: file.name,
+    mimeType:  file.type || 'image/jpeg',
+    sandbox,
+  });
+  return data.url;
+}
+
 // ── Create listing ────────────────────────────────────────────────────────────
 
 export async function createListing(accessToken, listing, marketplaceId, sandbox = false) {

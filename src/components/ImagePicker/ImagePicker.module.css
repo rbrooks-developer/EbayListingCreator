@@ -1,0 +1,150 @@
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+/* ── Thumbnail ────────────────────────────────────────────────────────────── */
+
+.thumb {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.thumbMain {
+  outline: 2px solid var(--ebay-blue);
+  border-radius: 4px;
+}
+
+.thumbImg {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+
+.thumbMain .thumbImg {
+  cursor: default;
+}
+
+/* ── Spinner (uploading) ─────────────────────────────────────────────────── */
+
+.thumbSpinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  background: var(--bg-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+}
+
+.thumbSpinner::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d0d0d0;
+  border-top-color: var(--ebay-blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Error ───────────────────────────────────────────────────────────────── */
+
+.thumbErrorIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  background: var(--error-bg);
+  border: 1px solid #ef9a9a;
+  color: var(--error);
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+
+/* ── Main badge ──────────────────────────────────────────────────────────── */
+
+.mainBadge {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  background: var(--ebay-blue);
+  color: white;
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+/* ── Remove button ───────────────────────────────────────────────────────── */
+
+.removeBtn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  background: var(--error);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.thumb:hover .removeBtn {
+  opacity: 1;
+}
+
+/* ── Add button ──────────────────────────────────────────────────────────── */
+
+.addBtn {
+  width: 56px;
+  height: 56px;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  background: var(--bg-light);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  white-space: nowrap;
+  padding: 0 4px;
+  text-align: center;
+}
+
+.addBtn:hover {
+  border-color: var(--ebay-blue);
+  color: var(--ebay-blue);
+  background: rgba(54, 101, 243, 0.05);
+}

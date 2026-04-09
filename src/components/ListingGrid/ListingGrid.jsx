@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { createEmptyListing, parseListingFile, exportListingsToExcel } from '../../utils/excelUtils.js';
-import { createListing } from '../../services/ebayApi.js';
+import { createListing, uploadImage } from '../../services/ebayApi.js';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
+import ImagePicker from '../ImagePicker/ImagePicker.jsx';
 import styles from './ListingGrid.module.css';
 
 const CONDITIONS = ['New', 'Used'];
@@ -67,6 +68,91 @@ export default function ListingGrid({
 
   // Shared aspects cache — persists for the session, avoids re-fetching
   const aspectsCache = useRef(new Map());
+
+  // Shared image file input — single element so the browser remembers the last directory
+  const imageFileInputRef = useRef(null);
+  const imageTargetIdRef = useRef(null); // which listing row is adding images
+
+  function openImagePicker(listingId) {
+    imageTargetIdRef.current = listingId;
+    imageFileInputRef.current?.click();
+  }
+
+  async function handleImageFiles(e) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ''; // reset so the same files can be re-selected
+    const targetId = imageTargetIdRef.current;
+    if (!files.length || !targetId || !accessToken) return;
+
+    // Create placeholder entries immediately so thumbnails appear while uploading
+    const placeholders = files.map((f) => ({
+      id: crypto.randomUUID(),
+      name: f.name,
+      previewUrl: URL.createObjectURL(f),
+      ebayUrl: '',
+      status: 'uploading',
+      error: '',
+    }));
+
+    // Append placeholders to this listing's images
+    onChange(
+      listings.map((l) =>
+        l.id !== targetId ? l : { ...l, images: [...(l.images ?? []), ...placeholders] }
+      )
+    );
+
+    // Upload each image and update its entry when done
+    await Promise.all(
+      placeholders.map(async (placeholder, i) => {
+        try {
+          const ebayUrl = await uploadImage(accessToken, files[i], sandbox);
+          onChange((prev) =>
+            prev.map((l) =>
+              l.id !== targetId ? l : {
+                ...l,
+                images: l.images.map((img) =>
+                  img.id !== placeholder.id ? img : { ...img, ebayUrl, status: 'ready' }
+                ),
+              }
+            )
+          );
+        } catch (err) {
+          onChange((prev) =>
+            prev.map((l) =>
+              l.id !== targetId ? l : {
+                ...l,
+                images: l.images.map((img) =>
+                  img.id !== placeholder.id ? img : { ...img, status: 'error', error: err.message }
+                ),
+              }
+            )
+          );
+        }
+      })
+    );
+  }
+
+  function removeImage(listingId, imageId) {
+    onChange(
+      listings.map((l) =>
+        l.id !== listingId ? l : { ...l, images: l.images.filter((img) => img.id !== imageId) }
+      )
+    );
+  }
+
+  function setMainImage(listingId, imageId) {
+    onChange(
+      listings.map((l) => {
+        if (l.id !== listingId) return l;
+        const idx = l.images.findIndex((img) => img.id === imageId);
+        if (idx <= 0) return l;
+        const reordered = [...l.images];
+        const [picked] = reordered.splice(idx, 1);
+        reordered.unshift(picked);
+        return { ...l, images: reordered };
+      })
+    );
+  }
 
   // ── Row mutation helpers ─────────────────────────────────────────────────
 
@@ -198,6 +284,16 @@ export default function ListingGrid({
               style={{ display: 'none' }}
               aria-hidden="true"
             />
+            {/* Shared image picker — single element so browser remembers last directory */}
+            <input
+              ref={imageFileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageFiles}
+              style={{ display: 'none' }}
+              aria-hidden="true"
+            />
           </div>
           <div className={styles.toolbarRight}>
             {hasListings && (
@@ -241,8 +337,9 @@ export default function ListingGrid({
                   <th className={styles.colDimension}>L (in)</th>
                   <th className={styles.colDimension}>W (in)</th>
                   <th className={styles.colDimension}>H (in)</th>
-                  <th className={styles.colWeight}>Weight (lb)</th>
-                  <th className={styles.colImageUrl}>Image URL</th>
+                  <th className={styles.colWeight}>Lbs</th>
+                  <th className={styles.colWeight}>Oz</th>
+                  <th className={styles.colImages}>Images</th>
                   <th className={styles.colActions} aria-label="Actions" />
                 </tr>
               </thead>
@@ -260,6 +357,9 @@ export default function ListingGrid({
                     onRemove={removeRow}
                     onOpenAspects={setAspectsListingId}
                     onPost={handlePost}
+                    onOpenImagePicker={openImagePicker}
+                    onRemoveImage={removeImage}
+                    onSetMainImage={setMainImage}
                     hasCategories={hasCategories}
                     canPost={!!accessToken}
                   />
@@ -305,7 +405,7 @@ export default function ListingGrid({
 
 // ── ListingRow ────────────────────────────────────────────────────────────────
 
-function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onPost, hasCategories, canPost }) {
+function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onPost, onOpenImagePicker, onRemoveImage, onSetMainImage, hasCategories, canPost }) {
   const isAuction = listing.listingType === 'Auction';
   const aspectsStatus = getAspectsStatus(listing, aspectsCache.current);
   const statusCfg = STATUS_CONFIG[aspectsStatus];
@@ -411,12 +511,11 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       {/* Quantity */}
       <td className={styles.colQty}>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
           className={styles.cellInput}
           value={listing.quantity}
-          onChange={(e) => field('quantity', e.target.value)}
-          min={1}
-          step={1}
+          onChange={(e) => field('quantity', e.target.value.replace(/\D/g, ''))}
           aria-label="Quantity"
         />
       </td>
@@ -449,12 +548,11 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       <td className={styles.colPrice}>
         {!isAuction ? (
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             className={styles.cellInput}
             value={listing.price}
             onChange={(e) => field('price', e.target.value)}
-            min={0}
-            step={0.01}
             placeholder="0.00"
             aria-label="Buy It Now price"
           />
@@ -467,12 +565,11 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       <td className={styles.colAuctionStartPrice}>
         {isAuction ? (
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             className={styles.cellInput}
             value={listing.auctionStartPrice}
             onChange={(e) => field('auctionStartPrice', e.target.value)}
-            min={0}
-            step={0.01}
             placeholder="0.99"
             aria-label="Auction start price"
           />
@@ -501,12 +598,11 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       {/* Best Offer */}
       <td className={styles.colBestOffer}>
         <input
-          type="number"
+          type="text"
+          inputMode="decimal"
           className={styles.cellInput}
           value={listing.bestOffer}
           onChange={(e) => field('bestOffer', e.target.value)}
-          min={0}
-          step={0.01}
           placeholder="0.00"
           aria-label="Best offer amount"
         />
@@ -557,36 +653,33 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       {/* Dimensions */}
       <td className={styles.colDimension}>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
           className={styles.cellInput}
           value={listing.length}
-          onChange={(e) => field('length', e.target.value)}
-          min={0}
-          step={0.1}
+          onChange={(e) => field('length', e.target.value.replace(/\D/g, ''))}
           placeholder="0"
           aria-label="Length (inches)"
         />
       </td>
       <td className={styles.colDimension}>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
           className={styles.cellInput}
           value={listing.width}
-          onChange={(e) => field('width', e.target.value)}
-          min={0}
-          step={0.1}
+          onChange={(e) => field('width', e.target.value.replace(/\D/g, ''))}
           placeholder="0"
           aria-label="Width (inches)"
         />
       </td>
       <td className={styles.colDimension}>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
           className={styles.cellInput}
           value={listing.height}
-          onChange={(e) => field('height', e.target.value)}
-          min={0}
-          step={0.1}
+          onChange={(e) => field('height', e.target.value.replace(/\D/g, ''))}
           placeholder="0"
           aria-label="Height (inches)"
         />
@@ -595,26 +688,34 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       {/* Weight */}
       <td className={styles.colWeight}>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
           className={styles.cellInput}
-          value={listing.weight}
-          onChange={(e) => field('weight', e.target.value)}
-          min={0}
-          step={0.01}
-          placeholder="0.00"
-          aria-label="Weight (lbs)"
+          value={listing.weightLbs}
+          onChange={(e) => field('weightLbs', e.target.value.replace(/\D/g, ''))}
+          placeholder="0"
+          aria-label="Weight pounds"
+        />
+      </td>
+      <td className={styles.colWeight}>
+        <input
+          type="text"
+          inputMode="numeric"
+          className={styles.cellInput}
+          value={listing.weightOz}
+          onChange={(e) => field('weightOz', e.target.value.replace(/\D/g, ''))}
+          placeholder="0"
+          aria-label="Weight ounces"
         />
       </td>
 
-      {/* Image URL */}
-      <td className={styles.colImageUrl}>
-        <input
-          type="url"
-          className={styles.cellInput}
-          value={listing.imageUrl}
-          onChange={(e) => field('imageUrl', e.target.value)}
-          placeholder="https://…"
-          aria-label="Image URL"
+      {/* Images */}
+      <td className={styles.colImages}>
+        <ImagePicker
+          images={listing.images ?? []}
+          onAddClick={() => onOpenImagePicker(listing.id)}
+          onRemove={(imageId) => onRemoveImage(listing.id, imageId)}
+          onSetMain={(imageId) => onSetMainImage(listing.id, imageId)}
         />
       </td>
 

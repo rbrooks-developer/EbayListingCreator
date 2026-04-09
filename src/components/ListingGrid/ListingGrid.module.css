@@ -204,7 +204,7 @@
 .colShipping    { min-width: 200px; }
 .colDimension   { width: 72px; }
 .colWeight      { width: 90px; }
-.colImageUrl    { min-width: 160px; }
+.colImages      { min-width: 200px; }
 .colActions     { width: 44px; text-align: center; }
 
 /* Cell inputs */
