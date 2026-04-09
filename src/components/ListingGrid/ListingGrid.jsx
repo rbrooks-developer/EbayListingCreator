@@ -325,10 +325,10 @@ export default function ListingGrid({
                   <th className={styles.colDescription}>Description</th>
                   <th className={styles.colCategory}>Category</th>
                   <th className={styles.colSpecifics}>Specifics</th>
-                  <th className={styles.colQty}>Qty</th>
+                  <th className={styles.colDimension}>Qty</th>
                   <th className={styles.colCondition}>Condition</th>
                   <th className={styles.colType}>Listing Type</th>
-                  <th className={styles.colPrice}>Price ($)</th>
+                  <th className={styles.colBestOffer}>Price ($)</th>
                   <th className={styles.colAuctionStartPrice}>Start Price ($)</th>
                   <th className={styles.colAuctionDays}>Auction Days</th>
                   <th className={styles.colBestOffer}>Best Offer ($)</th>
@@ -337,8 +337,8 @@ export default function ListingGrid({
                   <th className={styles.colDimension}>L (in)</th>
                   <th className={styles.colDimension}>W (in)</th>
                   <th className={styles.colDimension}>H (in)</th>
-                  <th className={styles.colWeight}>Lbs</th>
-                  <th className={styles.colWeight}>Oz</th>
+                  <th className={styles.colDimension}>Lbs</th>
+                  <th className={styles.colDimension}>Oz</th>
                   <th className={styles.colImages}>Images</th>
                   <th className={styles.colActions} aria-label="Actions" />
                 </tr>
@@ -509,7 +509,7 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       </td>
 
       {/* Quantity */}
-      <td className={styles.colQty}>
+      <td className={styles.colDimension}>
         <input
           type="text"
           inputMode="numeric"
@@ -545,7 +545,7 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       </td>
 
       {/* Price (BIN) */}
-      <td className={styles.colPrice}>
+      <td className={styles.colBestOffer}>
         {!isAuction ? (
           <input
             type="text"
@@ -686,7 +686,7 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       </td>
 
       {/* Weight */}
-      <td className={styles.colWeight}>
+      <td className={styles.colDimension}>
         <input
           type="text"
           inputMode="numeric"
@@ -697,7 +697,7 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
           aria-label="Weight pounds"
         />
       </td>
-      <td className={styles.colWeight}>
+      <td className={styles.colDimension}>
         <input
           type="text"
           inputMode="numeric"
