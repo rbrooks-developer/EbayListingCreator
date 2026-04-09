@@ -154,114 +154,165 @@ async function handleProxy(body, env) {
   return ok(data, env);
 }
 
-// ── /listing ──────────────────────────────────────────────────────────────────
+// ── /listing (Trading API) ────────────────────────────────────────────────────
+
+const TRADING_API_URL         = 'https://api.ebay.com/ws/api.dll';
+const TRADING_API_SANDBOX_URL = 'https://api.sandbox.ebay.com/ws/api.dll';
+
+const SITE_MAP = {
+  EBAY_US: { siteId: '0',  country: 'US',        currency: 'USD', siteName: 'US' },
+  EBAY_GB: { siteId: '3',  country: 'GB',        currency: 'GBP', siteName: 'UK' },
+  EBAY_CA: { siteId: '2',  country: 'CA',        currency: 'CAD', siteName: 'Canada' },
+  EBAY_AU: { siteId: '15', country: 'AU',        currency: 'AUD', siteName: 'Australia' },
+  EBAY_DE: { siteId: '77', country: 'DE',        currency: 'EUR', siteName: 'Germany' },
+  EBAY_FR: { siteId: '71', country: 'FR',        currency: 'EUR', siteName: 'France' },
+  EBAY_IT: { siteId: '101','country': 'IT',      currency: 'EUR', siteName: 'Italy' },
+  EBAY_ES: { siteId: '186','country': 'ES',      currency: 'EUR', siteName: 'Spain' },
+};
+
+const CONDITION_MAP = { New: '1000', Used: '3000' };
+
+const DURATION_MAP = { '3': 'Days_3', '5': 'Days_5', '7': 'Days_7', '10': 'Days_10' };
+
+function xmlEscape(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
 
 async function handleCreateListing(body, env) {
   const { token, listing, marketplaceId = 'EBAY_US', sandbox = false } = body;
   if (!token)   return err('Missing "token"', 400, env);
   if (!listing) return err('Missing "listing"', 400, env);
 
-  const base = sandbox
-    ? 'https://api.sandbox.ebay.com'
-    : 'https://api.ebay.com';
-  const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'Content-Language': 'en-US' };
+  const clientId     = sandbox ? env.EBAY_SANDBOX_CLIENT_ID     : env.EBAY_CLIENT_ID;
+  const clientSecret = sandbox ? env.EBAY_SANDBOX_CLIENT_SECRET : env.EBAY_CLIENT_SECRET;
+  const devId        = env.EBAY_DEV_ID;
 
-  // ── 1. Fetch account policies ─────────────────────────────────────────────
-  const [fpRes, ppRes, rpRes] = await Promise.all([
-    fetch(`${base}/sell/account/v1/fulfillment_policy?marketplace_id=${marketplaceId}`, { headers: h }),
-    fetch(`${base}/sell/account/v1/payment_policy?marketplace_id=${marketplaceId}`,     { headers: h }),
-    fetch(`${base}/sell/account/v1/return_policy?marketplace_id=${marketplaceId}`,      { headers: h }),
-  ]);
-  const [fpData, ppData, rpData] = await Promise.all([
-    fpRes.json().catch(() => ({})),
-    ppRes.json().catch(() => ({})),
-    rpRes.json().catch(() => ({})),
-  ]);
+  if (!devId) return err('EBAY_DEV_ID secret is not set on the Worker.', 500, env);
 
-  const fulfillmentPolicyId = fpData.fulfillmentPolicies?.[0]?.fulfillmentPolicyId;
-  const paymentPolicyId     = ppData.paymentPolicies?.[0]?.paymentPolicyId;
-  const returnPolicyId      = rpData.returnPolicies?.[0]?.returnPolicyId;
+  const site       = SITE_MAP[marketplaceId] ?? SITE_MAP.EBAY_US;
+  const isAuction  = listing.listingType === 'Auction';
+  const callName   = isAuction ? 'AddItem' : 'AddFixedPriceItem';
+  const price      = isAuction ? (listing.auctionStartPrice || '0.99') : (listing.price || '0.00');
+  const duration   = isAuction ? (DURATION_MAP[String(listing.auctionDays)] ?? 'Days_7') : 'GTC';
+  const listingType = isAuction ? 'Chinese' : 'FixedPriceItem';
+  const conditionId = CONDITION_MAP[listing.condition] ?? '1000';
 
-  if (!fulfillmentPolicyId || !paymentPolicyId || !returnPolicyId) {
-    const missing = [
-      !fulfillmentPolicyId && 'shipping',
-      !paymentPolicyId     && 'payment',
-      !returnPolicyId      && 'return',
-    ].filter(Boolean).join(', ');
-    return err(
-      `No ${missing} polic${missing.includes(',') ? 'ies' : 'y'} found in your eBay account. ` +
-      'Set up your business policies in eBay Seller Hub first.',
-      422, env
-    );
-  }
+  // ── Item Specifics ────────────────────────────────────────────────────────
+  const aspectEntries = Object.entries(listing.aspects ?? {});
+  const itemSpecificsXml = aspectEntries.length === 0 ? '' : `
+    <ItemSpecifics>
+      ${aspectEntries.flatMap(([name, value]) => {
+        const vals = Array.isArray(value) ? value : [value];
+        return vals.filter(Boolean).map(v =>
+          `<NameValueList><Name>${xmlEscape(name)}</Name><Value>${xmlEscape(v)}</Value></NameValueList>`
+        );
+      }).join('\n      ')}
+    </ItemSpecifics>`;
 
-  // ── 2. Create / update inventory item ────────────────────────────────────
-  const sku = listing.id;
-  const conditionMap = { New: 'NEW', Used: 'USED_GOOD' };
+  // ── Shipping ──────────────────────────────────────────────────────────────
+  const hasPackageInfo = listing.length && listing.width && listing.height && listing.weight;
+  const shippingXml = hasPackageInfo ? `
+    <ShippingDetails>
+      <ShippingType>Calculated</ShippingType>
+      <ShippingServiceOptions>
+        <ShippingServicePriority>1</ShippingServicePriority>
+        <ShippingService>${xmlEscape(listing.shippingService || 'USPSPriority')}</ShippingService>
+      </ShippingServiceOptions>
+      <PackageDepth>${listing.height}</PackageDepth>
+      <PackageLength>${listing.length}</PackageLength>
+      <PackageWidth>${listing.width}</PackageWidth>
+      <WeightMajor>${Math.floor(parseFloat(listing.weight) || 0)}</WeightMajor>
+      <WeightMinor>${Math.round(((parseFloat(listing.weight) || 0) % 1) * 16)}</WeightMinor>
+    </ShippingDetails>` : `
+    <ShippingDetails>
+      <ShippingType>Flat</ShippingType>
+      <ShippingServiceOptions>
+        <ShippingServicePriority>1</ShippingServicePriority>
+        <ShippingService>${xmlEscape(listing.shippingService || 'USPSPriority')}</ShippingService>
+        <ShippingServiceCost>0.00</ShippingServiceCost>
+      </ShippingServiceOptions>
+    </ShippingDetails>`;
 
-  // Aspects must be arrays of strings
-  const aspects = {};
-  Object.entries(listing.aspects ?? {}).forEach(([k, v]) => {
-    aspects[k] = Array.isArray(v) ? v.map(String).filter(Boolean) : [String(v)];
-  });
+  // ── Pictures ──────────────────────────────────────────────────────────────
+  const pictureXml = listing.imageUrl ? `
+    <PictureDetails>
+      <PictureURL>${xmlEscape(listing.imageUrl)}</PictureURL>
+    </PictureDetails>` : '';
 
-  const inventoryItem = {
-    availability: { shipToLocationAvailability: { quantity: parseInt(listing.quantity) || 1 } },
-    condition: conditionMap[listing.condition] ?? 'NEW',
-    product: {
-      title: listing.title,
-      description: listing.description || listing.title,
-      aspects,
-      ...(listing.imageUrl ? { imageUrls: [listing.imageUrl] } : {}),
+  // ── Best Offer ────────────────────────────────────────────────────────────
+  const bestOfferXml = (listing.bestOffer && !isAuction) ? `
+    <BestOfferDetails>
+      <BestOfferEnabled>true</BestOfferEnabled>
+    </BestOfferDetails>` : '';
+
+  // ── Build XML ─────────────────────────────────────────────────────────────
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<${callName}Request xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${token}</eBayAuthToken>
+  </RequesterCredentials>
+  <Item>
+    <Title>${xmlEscape(listing.title)}</Title>
+    <Description><![CDATA[${listing.description || listing.title}]]></Description>
+    <PrimaryCategory>
+      <CategoryID>${listing.categoryId}</CategoryID>
+    </PrimaryCategory>
+    <StartPrice>${price}</StartPrice>
+    <ConditionID>${conditionId}</ConditionID>
+    <Country>${site.country}</Country>
+    <Currency>${site.currency}</Currency>
+    <DispatchTimeMax>3</DispatchTimeMax>
+    <ListingDuration>${duration}</ListingDuration>
+    <ListingType>${listingType}</ListingType>
+    <Quantity>${parseInt(listing.quantity) || 1}</Quantity>
+    <Site>${site.siteName}</Site>
+    <ReturnPolicy>
+      <ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>
+      <RefundOption>MoneyBack</RefundOption>
+      <ReturnsWithinOption>Days_30</ReturnsWithinOption>
+      <ShippingCostPaidByOption>Buyer</ShippingCostPaidByOption>
+    </ReturnPolicy>
+    ${shippingXml}
+    ${pictureXml}
+    ${itemSpecificsXml}
+    ${bestOfferXml}
+  </Item>
+</${callName}Request>`;
+
+  // ── Call Trading API ──────────────────────────────────────────────────────
+  const apiUrl = sandbox ? TRADING_API_SANDBOX_URL : TRADING_API_URL;
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type':                    'text/xml',
+      'X-EBAY-API-COMPATIBILITY-LEVEL':  '1263',
+      'X-EBAY-API-DEV-NAME':             devId,
+      'X-EBAY-API-APP-NAME':             clientId,
+      'X-EBAY-API-CERT-NAME':            clientSecret,
+      'X-EBAY-API-CALL-NAME':            callName,
+      'X-EBAY-API-SITEID':               site.siteId,
     },
-  };
-
-  const invRes = await fetch(`${base}/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
-    method: 'PUT', headers: h, body: JSON.stringify(inventoryItem),
+    body: xml,
   });
-  if (!invRes.ok && invRes.status !== 204) {
-    const e = await invRes.json().catch(() => ({}));
-    return err(e.errors?.[0]?.message ?? `Inventory item error (${invRes.status})`, invRes.status, env);
+
+  const text = await res.text();
+
+  // ── Parse XML response ────────────────────────────────────────────────────
+  const ack         = text.match(/<Ack>(.*?)<\/Ack>/)?.[1];
+  const itemId      = text.match(/<ItemID>(\d+)<\/ItemID>/)?.[1];
+  const shortMsg    = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/)?.[1];
+  const longMsg     = text.match(/<LongMessage>(.*?)<\/LongMessage>/)?.[1];
+
+  if (ack === 'Failure' || (!itemId && ack !== 'Success' && ack !== 'Warning')) {
+    return err(longMsg || shortMsg || `Trading API error (${res.status})`, 400, env);
   }
 
-  // ── 3. Create offer ───────────────────────────────────────────────────────
-  const isAuction = listing.listingType === 'Auction';
-  const durationMap = { '3': 'DAYS_3', '5': 'DAYS_5', '7': 'DAYS_7', '10': 'DAYS_10' };
-
-  const offer = {
-    sku,
-    marketplaceId,
-    format: isAuction ? 'AUCTION' : 'FIXED_PRICE',
-    availableQuantity: parseInt(listing.quantity) || 1,
-    categoryId: listing.categoryId,
-    listingDescription: listing.description || listing.title,
-    merchantLocationKey: 'default',
-    listingPolicies: { fulfillmentPolicyId, paymentPolicyId, returnPolicyId },
-    pricingSummary: {
-      price: { currency: 'USD', value: String(isAuction ? (listing.auctionStartPrice || '0.99') : (listing.price || '0.00')) },
-      ...(listing.bestOffer && !isAuction ? { minimumAdvertisedPrice: { currency: 'USD', value: String(listing.bestOffer) } } : {}),
-    },
-    ...(isAuction ? { listingDuration: durationMap[String(listing.auctionDays)] ?? 'DAYS_7' } : {}),
-  };
-
-  const offerRes = await fetch(`${base}/sell/inventory/v1/offer`, {
-    method: 'POST', headers: h, body: JSON.stringify(offer),
-  });
-  const offerData = await offerRes.json().catch(() => ({}));
-  if (!offerRes.ok) {
-    return err(offerData.errors?.[0]?.message ?? `Offer error (${offerRes.status})`, offerRes.status, env);
-  }
-
-  // ── 4. Publish offer ──────────────────────────────────────────────────────
-  const publishRes = await fetch(`${base}/sell/inventory/v1/offer/${offerData.offerId}/publish`, {
-    method: 'POST', headers: { Authorization: h.Authorization },
-  });
-  const publishData = await publishRes.json().catch(() => ({}));
-  if (!publishRes.ok) {
-    return err(publishData.errors?.[0]?.message ?? `Publish error (${publishRes.status})`, publishRes.status, env);
-  }
-
-  return ok({ listingId: publishData.listingId }, env);
+  return ok({ listingId: itemId }, env);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
