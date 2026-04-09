@@ -418,9 +418,10 @@ async function handleUserLocation(body, env) {
   });
 
   const text  = await res.text();
-  const city  = text.match(/<City>(.*?)<\/City>/)?.[1]?.trim()  ?? '';
-  const state = text.match(/<StateOrProvince>(.*?)<\/StateOrProvince>/)?.[1]?.trim() ?? '';
-  const zip   = text.match(/<PostalCode>(.*?)<\/PostalCode>/)?.[1]?.trim() ?? '';
+  // Use [^<]* so whitespace / newlines inside tags are handled correctly
+  const city  = text.match(/<CityName>([^<]*)<\/CityName>/)?.[1]?.trim()           ?? '';
+  const state = text.match(/<StateOrProvince>([^<]*)<\/StateOrProvince>/)?.[1]?.trim() ?? '';
+  const zip   = text.match(/<PostalCode>([^<]*)<\/PostalCode>/)?.[1]?.trim()        ?? '';
 
   const location = city && state ? `${city}, ${state}` : city || zip || '';
   return ok({ location, postalCode: zip }, env);
