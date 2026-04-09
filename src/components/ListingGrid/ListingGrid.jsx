@@ -55,6 +55,7 @@ export default function ListingGrid({
   categories = [],
   categoryTreeId = null,
   shippingServices = [],
+  fulfillmentPolicies = [],
   accessToken = null,
   sandbox = false,
   marketplace = 'EBAY_US',
@@ -235,6 +236,7 @@ export default function ListingGrid({
                   <th className={styles.colAuctionStartPrice}>Start Price ($)</th>
                   <th className={styles.colAuctionDays}>Auction Days</th>
                   <th className={styles.colBestOffer}>Best Offer ($)</th>
+                  <th className={styles.colShipPolicy}>Ship Policy</th>
                   <th className={styles.colShipping}>Shipping Method</th>
                   <th className={styles.colDimension}>L (in)</th>
                   <th className={styles.colDimension}>W (in)</th>
@@ -251,6 +253,7 @@ export default function ListingGrid({
                     listing={listing}
                     categories={categories}
                     shippingServices={shippingServices}
+                    fulfillmentPolicies={fulfillmentPolicies}
                     aspectsCache={aspectsCache}
                     onUpdate={updateField}
                     onUpdateCategory={updateCategory}
@@ -302,7 +305,7 @@ export default function ListingGrid({
 
 // ── ListingRow ────────────────────────────────────────────────────────────────
 
-function ListingRow({ listing, categories, shippingServices, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onPost, hasCategories, canPost }) {
+function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onPost, hasCategories, canPost }) {
   const isAuction = listing.listingType === 'Auction';
   const aspectsStatus = getAspectsStatus(listing, aspectsCache.current);
   const statusCfg = STATUS_CONFIG[aspectsStatus];
@@ -507,6 +510,27 @@ function ListingRow({ listing, categories, shippingServices, aspectsCache, onUpd
           placeholder="0.00"
           aria-label="Best offer amount"
         />
+      </td>
+
+      {/* Shipping Policy (business policies) */}
+      <td className={styles.colShipPolicy}>
+        {fulfillmentPolicies.length > 0 ? (
+          <select
+            className={styles.cellSelect}
+            value={listing.fulfillmentPolicyId}
+            onChange={(e) => field('fulfillmentPolicyId', e.target.value)}
+            aria-label="Shipping policy"
+          >
+            <option value="">— auto (first) —</option>
+            {fulfillmentPolicies.map((p) => (
+              <option key={p.fulfillmentPolicyId} value={p.fulfillmentPolicyId}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className={styles.naText}>Connect API</span>
+        )}
       </td>
 
       {/* Shipping Method */}

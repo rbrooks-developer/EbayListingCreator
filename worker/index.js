@@ -202,6 +202,37 @@ async function handleCreateListing(body, env) {
   const listingType = isAuction ? 'Chinese' : 'FixedPriceItem';
   const conditionId = CONDITION_MAP[listing.condition] ?? '1000';
 
+  // ── Business Policies ─────────────────────────────────────────────────────
+  const accountBase = sandbox
+    ? 'https://api.sandbox.ebay.com/sell/account/v1'
+    : 'https://api.ebay.com/sell/account/v1';
+
+  async function fetchFirstPolicy(type) {
+    try {
+      const r = await fetch(
+        `${accountBase}/${type}_policy?marketplace_id=${marketplaceId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!r.ok) return null;
+      const d = await r.json().catch(() => null);
+      const key = type.replace(/_([a-z])/g, (_, c) => c.toUpperCase()) + 'Policies';
+      return d?.[key]?.[0] ?? null;
+    } catch { return null; }
+  }
+
+  // Use the user-selected fulfillment policy ID if provided; otherwise auto-pick the first
+  const selectedFulfillmentPolicyId = listing.fulfillmentPolicyId || null;
+  const [autoFulfillmentPolicy, returnPolicy, paymentPolicy] = await Promise.all([
+    selectedFulfillmentPolicyId ? Promise.resolve(null) : fetchFirstPolicy('fulfillment'),
+    fetchFirstPolicy('return'),
+    fetchFirstPolicy('payment'),
+  ]);
+  const fulfillmentPolicyId = selectedFulfillmentPolicyId
+    ?? autoFulfillmentPolicy?.fulfillmentPolicyId
+    ?? null;
+
+  const useBusinessPolicies = !!(fulfillmentPolicyId || returnPolicy || paymentPolicy);
+
   // ── Item Specifics ────────────────────────────────────────────────────────
   const aspectEntries = Object.entries(listing.aspects ?? {});
   const itemSpecificsXml = aspectEntries.length === 0 ? '' : `
@@ -214,9 +245,24 @@ async function handleCreateListing(body, env) {
       }).join('\n      ')}
     </ItemSpecifics>`;
 
-  // ── Shipping ──────────────────────────────────────────────────────────────
-  const hasPackageInfo = listing.length && listing.width && listing.height && listing.weight;
-  const shippingXml = hasPackageInfo ? `
+  // ── Shipping / Return — business policies OR legacy inline ────────────────
+  const hasPackageInfo = !!(listing.length && listing.width && listing.height && listing.weight);
+  let shippingXml = '';
+  let returnPolicyXml = '';
+  let sellerProfilesXml = '';
+
+  if (useBusinessPolicies) {
+    const returnProfileId  = returnPolicy?.returnPolicyId  ?? '';
+    const paymentProfileId = paymentPolicy?.paymentPolicyId ?? '';
+    sellerProfilesXml = `
+    <SellerProfiles>
+      ${fulfillmentPolicyId ? `<SellerShippingProfile><ShippingProfileID>${fulfillmentPolicyId}</ShippingProfileID></SellerShippingProfile>` : ''}
+      ${returnProfileId     ? `<SellerReturnProfile><ReturnProfileID>${returnProfileId}</ReturnProfileID></SellerReturnProfile>`             : ''}
+      ${paymentProfileId    ? `<SellerPaymentProfile><PaymentProfileID>${paymentProfileId}</PaymentProfileID></SellerPaymentProfile>`       : ''}
+    </SellerProfiles>`;
+  } else {
+    // Legacy inline fields (no business policies)
+    shippingXml = hasPackageInfo ? `
     <ShippingDetails>
       <ShippingType>Calculated</ShippingType>
       <ShippingServiceOptions>
@@ -237,6 +283,25 @@ async function handleCreateListing(body, env) {
         <ShippingServiceCost>0.00</ShippingServiceCost>
       </ShippingServiceOptions>
     </ShippingDetails>`;
+    returnPolicyXml = `
+    <ReturnPolicy>
+      <ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>
+      <RefundOption>MoneyBack</RefundOption>
+      <ReturnsWithinOption>Days_30</ReturnsWithinOption>
+      <ShippingCostPaidByOption>Buyer</ShippingCostPaidByOption>
+    </ReturnPolicy>`;
+  }
+
+  // ── Package dimensions (for calculated shipping rate at checkout) ─────────
+  const packageXml = hasPackageInfo ? `
+    <ShippingPackageDetails>
+      <MeasurementUnit>English</MeasurementUnit>
+      <PackageDepth>${listing.height}</PackageDepth>
+      <PackageLength>${listing.length}</PackageLength>
+      <PackageWidth>${listing.width}</PackageWidth>
+      <WeightMajor>${Math.floor(parseFloat(listing.weight) || 0)}</WeightMajor>
+      <WeightMinor>${Math.round(((parseFloat(listing.weight) || 0) % 1) * 16)}</WeightMinor>
+    </ShippingPackageDetails>` : '';
 
   // ── Pictures ──────────────────────────────────────────────────────────────
   const pictureXml = listing.imageUrl ? `
@@ -271,13 +336,10 @@ async function handleCreateListing(body, env) {
     <ListingType>${listingType}</ListingType>
     <Quantity>${parseInt(listing.quantity) || 1}</Quantity>
     <Site>${site.siteName}</Site>
-    <ReturnPolicy>
-      <ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>
-      <RefundOption>MoneyBack</RefundOption>
-      <ReturnsWithinOption>Days_30</ReturnsWithinOption>
-      <ShippingCostPaidByOption>Buyer</ShippingCostPaidByOption>
-    </ReturnPolicy>
+    ${returnPolicyXml}
     ${shippingXml}
+    ${sellerProfilesXml}
+    ${packageXml}
     ${pictureXml}
     ${itemSpecificsXml}
     ${bestOfferXml}

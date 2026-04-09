@@ -13,6 +13,7 @@ import {
   fetchUserInfo,
   fetchCategories,
   fetchShippingServices,
+  fetchFulfillmentPolicies,
 } from './services/ebayApi.js';
 
 function AppContent() {
@@ -88,10 +89,11 @@ function AppContent() {
       const token = await exchangeCodeForTokens(code, sandbox);
       setAccessToken(token);
 
-      const [userInfo, categoryResult, shippingServices] = await Promise.all([
+      const [userInfo, categoryResult, shippingServices, fulfillmentPolicies] = await Promise.all([
         fetchUserInfo(token, sandbox),
         fetchCategories(token, marketplace, sandbox).catch(() => ({ categories: [], categoryTreeId: null })),
         fetchShippingServices(token, marketplace, sandbox).catch(() => []),
+        fetchFulfillmentPolicies(token, marketplace, sandbox).catch(() => []),
       ]);
       const { categories, categoryTreeId } = categoryResult;
 
@@ -102,6 +104,7 @@ function AppContent() {
         categories,
         categoryTreeId,
         shippingServices,
+        fulfillmentPolicies,
       });
 
       // Scroll back to the OAuth section after the redirect returns
@@ -150,6 +153,7 @@ function AppContent() {
           categories={connectionData?.categories ?? []}
           categoryTreeId={connectionData?.categoryTreeId ?? null}
           shippingServices={connectionData?.shippingServices ?? []}
+          fulfillmentPolicies={connectionData?.fulfillmentPolicies ?? []}
           accessToken={accessToken}
           sandbox={connectionData?.sandbox ?? false}
           marketplace={connectionData?.marketplace ?? 'EBAY_US'}

@@ -207,6 +207,27 @@ export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_U
   }
 }
 
+// ── Fulfillment policies ──────────────────────────────────────────────────────
+
+const EBAY_ACCOUNT_URL    = 'https://api.ebay.com/sell/account/v1';
+const SANDBOX_ACCOUNT_URL = 'https://api.sandbox.ebay.com/sell/account/v1';
+
+export async function fetchFulfillmentPolicies(accessToken, marketplaceId = 'EBAY_US', sandbox = false) {
+  try {
+    const baseUrl = sandbox ? SANDBOX_ACCOUNT_URL : EBAY_ACCOUNT_URL;
+    const data = await ebayGet(
+      `${baseUrl}/fulfillment_policy?marketplace_id=${marketplaceId}`,
+      accessToken
+    );
+    return (data.fulfillmentPolicies ?? []).map((p) => ({
+      fulfillmentPolicyId: p.fulfillmentPolicyId,
+      name: p.name,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 // ── Create listing ────────────────────────────────────────────────────────────
 
 export async function createListing(accessToken, listing, marketplaceId, sandbox = false) {
