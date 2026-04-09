@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createEmptyListing, parseListingFile, exportListingsToExcel } from '../../utils/excelUtils.js';
 import { createListing, uploadImage } from '../../services/ebayApi.js';
+import { applyRules } from '../../utils/rulesEngine.js';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
 import ImagePicker from '../ImagePicker/ImagePicker.jsx';
@@ -62,14 +63,14 @@ export default function ListingGrid({
   accessToken = null,
   sandbox = false,
   marketplace = 'EBAY_US',
+  rules = [],
+  aspectsCache,
+  onOpenRulesManager,
 }) {
   const [importErrors, setImportErrors] = useState([]);
   const [importStatus, setImportStatus] = useState('');
   const [aspectsListingId, setAspectsListingId] = useState(null); // which row's modal is open
   const fileInputRef = useRef(null);
-
-  // Shared aspects cache — persists for the session, avoids re-fetching
-  const aspectsCache = useRef(new Map());
 
   // Shared image file input — single element so the browser remembers the last directory
   const imageFileInputRef = useRef(null);
@@ -155,6 +156,19 @@ export default function ListingGrid({
       })
     );
   }
+
+  // ── Auto-apply rules ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!rules.length) return;
+    const next = listings.map((listing) => {
+      if (!listing.categoryId) return listing;
+      const ruleAspects = applyRules(rules, listing);
+      if (Object.keys(ruleAspects).length === 0) return listing;
+      return { ...listing, aspects: { ...ruleAspects, ...listing.aspects } };
+    });
+    const changed = next.some((l, i) => JSON.stringify(l.aspects) !== JSON.stringify(listings[i].aspects));
+    if (changed) onChange(next);
+  }, [listings, rules]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Row mutation helpers ─────────────────────────────────────────────────
 
@@ -277,6 +291,9 @@ export default function ListingGrid({
             <button className={styles.btnPrimary} onClick={addRow}>+ Add Row</button>
             <button className={styles.btnOutline} onClick={() => fileInputRef.current?.click()}>
               Import Excel / CSV
+            </button>
+            <button className={styles.btnOutline} onClick={onOpenRulesManager}>
+              Rules{rules.length > 0 ? ` (${rules.length})` : ''}
             </button>
             <input
               ref={fileInputRef}

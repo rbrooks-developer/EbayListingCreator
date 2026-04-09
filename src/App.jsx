@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import SiteHeader from './components/SiteHeader/SiteHeader.jsx';
@@ -6,6 +6,7 @@ import HomePage from './components/HomePage/HomePage.jsx';
 import OAuthSection from './components/OAuthSection/OAuthSection.jsx';
 import ListingGrid from './components/ListingGrid/ListingGrid.jsx';
 import AuthModal from './components/AuthModal/AuthModal.jsx';
+import { useAuth } from './contexts/AuthContext.jsx';
 import { useSessionStorage } from './hooks/useSessionStorage.js';
 import {
   exchangeCodeForTokens,
@@ -16,10 +17,26 @@ import {
   fetchShippingServices,
   fetchFulfillmentPolicies,
 } from './services/ebayApi.js';
+import { fetchRules } from './services/rulesService.js';
+import RulesManager from './components/RulesManager/RulesManager.jsx';
 
 function AppContent() {
+  const { user } = useAuth();
+
   // ── Auth modal ──────────────────────────────────────────────────────────
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  // ── Rules ───────────────────────────────────────────────────────────────
+  const [rules, setRules] = useState([]);
+  const [rulesOpen, setRulesOpen] = useState(false);
+
+  // Shared aspects cache between ListingGrid and RulesManager
+  const aspectsCache = useRef(new Map());
+
+  useEffect(() => {
+    if (!user) { setRules([]); return; }
+    fetchRules().then(setRules).catch(() => {});
+  }, [user]);
 
   // ── eBay connection ─────────────────────────────────────────────────────
   // connectionData persists in sessionStorage (no tokens — just metadata)
@@ -166,6 +183,22 @@ function AppContent() {
           accessToken={accessToken}
           sandbox={connectionData?.sandbox ?? false}
           marketplace={connectionData?.marketplace ?? 'EBAY_US'}
+          rules={rules}
+          aspectsCache={aspectsCache}
+          onOpenRulesManager={() => setRulesOpen(true)}
+        />
+
+        <RulesManager
+          isOpen={rulesOpen}
+          onClose={() => setRulesOpen(false)}
+          rules={rules}
+          onRulesChange={setRules}
+          categories={connectionData?.categories ?? []}
+          accessToken={accessToken}
+          categoryTreeId={connectionData?.categoryTreeId ?? null}
+          sandbox={connectionData?.sandbox ?? false}
+          aspectsCache={aspectsCache}
+          onSignInClick={() => setAuthModalOpen(true)}
         />
       </main>
 
