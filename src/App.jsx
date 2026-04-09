@@ -79,10 +79,12 @@ function AppContent() {
 
     const sandbox     = sessionStorage.getItem('ebay_oauth_sandbox') === 'true';
     const marketplace = sessionStorage.getItem('ebay_marketplace') ?? 'EBAY_US';
+    const manualPostalCode = sessionStorage.getItem('ebay_postal_code') ?? '';
 
     // Clean up one-use session keys
     sessionStorage.removeItem('ebay_oauth_state');
     sessionStorage.removeItem('ebay_oauth_sandbox');
+    sessionStorage.removeItem('ebay_postal_code');
 
     setIsExchanging(true);
 
@@ -104,7 +106,7 @@ function AppContent() {
         sandbox,
         ebayUsername:      userInfo.username,
         defaultLocation:   userLoc.location,
-        defaultPostalCode: userLoc.postalCode,
+        defaultPostalCode: userLoc.postalCode || manualPostalCode,
         categories,
         categoryTreeId,
         shippingServices,
@@ -135,6 +137,7 @@ function AppContent() {
     sessionStorage.removeItem('ebay_refresh_token');
     sessionStorage.removeItem('ebay_oauth_state');
     sessionStorage.removeItem('ebay_marketplace');
+    sessionStorage.removeItem('ebay_postal_code');
   }
 
   return (

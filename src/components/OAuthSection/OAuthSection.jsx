@@ -23,6 +23,7 @@ const MARKETPLACES = [
  */
 export default function OAuthSection({ connectionData, isExchanging, exchangeError, onDisconnect }) {
   const [marketplace, setMarketplace] = useState('EBAY_US');
+  const [postalCode, setPostalCode] = useState('');
 
   const detectedEnv = detectConfiguredEnvironment();
   const [sandbox, setSandbox] = useState(detectedEnv === 'sandbox');
@@ -38,6 +39,7 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
   function handleConnect() {
     const url = buildAuthorizationUrl(sandbox);
     sessionStorage.setItem('ebay_marketplace', marketplace);
+    sessionStorage.setItem('ebay_postal_code', postalCode.trim());
     window.location.href = url;
   }
 
@@ -131,6 +133,20 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
                     </span>
                   )}
                 </div>
+              </div>
+
+              <div className={styles.field} style={{ maxWidth: 180 }}>
+                <label htmlFor="postalCode">Your ZIP / Postal Code</label>
+                <input
+                  id="postalCode"
+                  type="text"
+                  className={styles.postalInput}
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  placeholder="e.g. 78701"
+                  maxLength={10}
+                  disabled={!configured}
+                />
               </div>
 
               <button

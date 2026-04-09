@@ -263,6 +263,28 @@
   line-height: 1;
 }
 
+.postalInput {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-white);
+  width: 100%;
+}
+
+.postalInput:focus {
+  outline: none;
+  border-color: var(--ebay-blue);
+  box-shadow: 0 0 0 3px rgba(54, 101, 243, 0.15);
+}
+
+.postalInput:disabled {
+  background: var(--bg-light);
+  color: var(--text-muted);
+}
+
 .permissionNote {
   font-size: 0.8rem;
   color: var(--text-muted);
