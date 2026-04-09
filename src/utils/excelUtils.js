@@ -172,6 +172,7 @@ export function createEmptyListing() {
     categoryId: '',
     categoryName: '',
     aspects: {},
+    location: '',
     fulfillmentPolicyId: '',
     shippingService: '',
     length: '',

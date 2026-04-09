@@ -335,6 +335,7 @@ async function handleCreateListing(body, env) {
     <ConditionID>${conditionId}</ConditionID>
     <Country>${site.country}</Country>
     <Currency>${site.currency}</Currency>
+    <Location>${xmlEscape(listing.location || site.country)}</Location>
     <DispatchTimeMax>3</DispatchTimeMax>
     <ListingDuration>${duration}</ListingDuration>
     <ListingType>${listingType}</ListingType>

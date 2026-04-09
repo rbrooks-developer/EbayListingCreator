@@ -200,6 +200,7 @@
 .colBestOffer   { width: 100px; }
 .colCategory    { min-width: 200px; }
 .colSpecifics   { width: 130px; }
+.colLocation    { min-width: 130px; }
 .colShipPolicy  { min-width: 180px; }
 .colShipping    { min-width: 200px; }
 .colDimension   { width: 72px; }
