@@ -57,6 +57,8 @@ export default function ListingGrid({
   categoryTreeId = null,
   shippingServices = [],
   fulfillmentPolicies = [],
+  defaultLocation = '',
+  defaultPostalCode = '',
   accessToken = null,
   sandbox = false,
   marketplace = 'EBAY_US',
@@ -201,7 +203,7 @@ export default function ListingGrid({
     onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'submitting', statusError: '' }));
 
     try {
-      const { listingId } = await createListing(accessToken, listing, marketplace, sandbox);
+      const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode);
       onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'success', listingId }));
     } catch (e) {
       onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'error', statusError: e.message }));
@@ -332,7 +334,6 @@ export default function ListingGrid({
                   <th className={styles.colAuctionStartPrice}>Start Price ($)</th>
                   <th className={styles.colAuctionDays}>Auction Days</th>
                   <th className={styles.colBestOffer}>Best Offer ($)</th>
-                  <th className={styles.colLocation}>Location</th>
                   <th className={styles.colShipPolicy}>Ship Policy</th>
                   <th className={styles.colShipping}>Shipping Method</th>
                   <th className={styles.colDimension}>L (in)</th>
@@ -606,18 +607,6 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
           onChange={(e) => field('bestOffer', e.target.value)}
           placeholder="0.00"
           aria-label="Best offer amount"
-        />
-      </td>
-
-      {/* Location */}
-      <td className={styles.colLocation}>
-        <input
-          type="text"
-          className={styles.cellInput}
-          value={listing.location}
-          onChange={(e) => field('location', e.target.value)}
-          placeholder="City, ST or ZIP"
-          aria-label="Item location"
         />
       </td>
 

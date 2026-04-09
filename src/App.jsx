@@ -11,6 +11,7 @@ import {
   exchangeCodeForTokens,
   refreshAccessToken,
   fetchUserInfo,
+  fetchUserLocation,
   fetchCategories,
   fetchShippingServices,
   fetchFulfillmentPolicies,
@@ -89,8 +90,9 @@ function AppContent() {
       const token = await exchangeCodeForTokens(code, sandbox);
       setAccessToken(token);
 
-      const [userInfo, categoryResult, shippingServices, fulfillmentPolicies] = await Promise.all([
+      const [userInfo, userLoc, categoryResult, shippingServices, fulfillmentPolicies] = await Promise.all([
         fetchUserInfo(token, sandbox),
+        fetchUserLocation(token, sandbox).catch(() => ({ location: '', postalCode: '' })),
         fetchCategories(token, marketplace, sandbox).catch(() => ({ categories: [], categoryTreeId: null })),
         fetchShippingServices(token, marketplace, sandbox).catch(() => []),
         fetchFulfillmentPolicies(token, marketplace, sandbox).catch(() => []),
@@ -100,7 +102,9 @@ function AppContent() {
       setConnectionData({
         marketplace,
         sandbox,
-        ebayUsername:    userInfo.username,
+        ebayUsername:      userInfo.username,
+        defaultLocation:   userLoc.location,
+        defaultPostalCode: userLoc.postalCode,
         categories,
         categoryTreeId,
         shippingServices,
@@ -154,6 +158,8 @@ function AppContent() {
           categoryTreeId={connectionData?.categoryTreeId ?? null}
           shippingServices={connectionData?.shippingServices ?? []}
           fulfillmentPolicies={connectionData?.fulfillmentPolicies ?? []}
+          defaultLocation={connectionData?.defaultLocation ?? ''}
+          defaultPostalCode={connectionData?.defaultPostalCode ?? ''}
           accessToken={accessToken}
           sandbox={connectionData?.sandbox ?? false}
           marketplace={connectionData?.marketplace ?? 'EBAY_US'}

@@ -116,7 +116,16 @@ export async function refreshAccessToken(sandbox = false) {
   return data.access_token;
 }
 
-// ── User info ─────────────────────────────────────────────────────────────────
+// ── User info & location ──────────────────────────────────────────────────────
+
+export async function fetchUserLocation(accessToken, sandbox = false) {
+  try {
+    const data = await workerPost('user-location', { token: accessToken, sandbox });
+    return { location: data.location ?? '', postalCode: data.postalCode ?? '' };
+  } catch {
+    return { location: '', postalCode: '' };
+  }
+}
 
 export async function fetchUserInfo(accessToken, sandbox = false) {
   const url = sandbox ? SANDBOX_IDENTITY_URL : EBAY_IDENTITY_URL;
@@ -255,8 +264,8 @@ export async function uploadImage(accessToken, file, sandbox = false) {
 
 // ── Create listing ────────────────────────────────────────────────────────────
 
-export async function createListing(accessToken, listing, marketplaceId, sandbox = false) {
-  return workerPost('listing', { token: accessToken, listing, marketplaceId, sandbox });
+export async function createListing(accessToken, listing, marketplaceId, sandbox = false, defaultLocation = '', defaultPostalCode = '') {
+  return workerPost('listing', { token: accessToken, listing, marketplaceId, sandbox, defaultLocation, defaultPostalCode });
 }
 
 // ── Category aspects ──────────────────────────────────────────────────────────

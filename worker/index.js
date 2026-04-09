@@ -75,13 +75,14 @@ async function handle(request, env) {
   try { body = await request.json(); }
   catch { return err('Invalid JSON body', 400, env); }
 
-  if (path.endsWith('/exchange'))     return handleExchange(body, env);
-  if (path.endsWith('/refresh'))      return handleRefresh(body, env);
-  if (path.endsWith('/proxy'))        return handleProxy(body, env);
-  if (path.endsWith('/listing'))      return handleCreateListing(body, env);
-  if (path.endsWith('/upload-image')) return handleUploadImage(body, env);
+  if (path.endsWith('/exchange'))      return handleExchange(body, env);
+  if (path.endsWith('/refresh'))       return handleRefresh(body, env);
+  if (path.endsWith('/proxy'))         return handleProxy(body, env);
+  if (path.endsWith('/listing'))       return handleCreateListing(body, env);
+  if (path.endsWith('/upload-image'))  return handleUploadImage(body, env);
+  if (path.endsWith('/user-location')) return handleUserLocation(body, env);
 
-  return err('Unknown route — use /exchange, /refresh, /proxy, /listing, or /upload-image', 404, env);
+  return err('Unknown route', 404, env);
 }
 
 // ── /exchange ─────────────────────────────────────────────────────────────────
@@ -185,7 +186,7 @@ function xmlEscape(str) {
 }
 
 async function handleCreateListing(body, env) {
-  const { token, listing, marketplaceId = 'EBAY_US', sandbox = false } = body;
+  const { token, listing, marketplaceId = 'EBAY_US', sandbox = false, defaultLocation = '', defaultPostalCode = '' } = body;
   if (!token)   return err('Missing "token"', 400, env);
   if (!listing) return err('Missing "listing"', 400, env);
 
@@ -335,7 +336,8 @@ async function handleCreateListing(body, env) {
     <ConditionID>${conditionId}</ConditionID>
     <Country>${site.country}</Country>
     <Currency>${site.currency}</Currency>
-    <Location>${xmlEscape(listing.location || site.country)}</Location>
+    <Location>${xmlEscape(defaultLocation || site.country)}</Location>
+    ${defaultPostalCode ? `<PostalCode>${xmlEscape(defaultPostalCode)}</PostalCode>` : ''}
     <DispatchTimeMax>3</DispatchTimeMax>
     <ListingDuration>${duration}</ListingDuration>
     <ListingType>${listingType}</ListingType>
@@ -380,6 +382,48 @@ async function handleCreateListing(body, env) {
   }
 
   return ok({ listingId: itemId }, env);
+}
+
+// ── /user-location ────────────────────────────────────────────────────────────
+
+async function handleUserLocation(body, env) {
+  const { token, sandbox = false } = body;
+  if (!token) return err('Missing "token"', 400, env);
+
+  const clientId     = sandbox ? env.EBAY_SANDBOX_CLIENT_ID     : env.EBAY_CLIENT_ID;
+  const clientSecret = sandbox ? env.EBAY_SANDBOX_CLIENT_SECRET : env.EBAY_CLIENT_SECRET;
+  const devId        = env.EBAY_DEV_ID;
+  if (!devId) return ok({ location: '' }, env); // silently skip if secret not set
+
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<GetUserRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${token}</eBayAuthToken>
+  </RequesterCredentials>
+</GetUserRequest>`;
+
+  const apiUrl = sandbox ? TRADING_API_SANDBOX_URL : TRADING_API_URL;
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type':                    'text/xml',
+      'X-EBAY-API-COMPATIBILITY-LEVEL':  '1263',
+      'X-EBAY-API-DEV-NAME':             devId,
+      'X-EBAY-API-APP-NAME':             clientId,
+      'X-EBAY-API-CERT-NAME':            clientSecret,
+      'X-EBAY-API-CALL-NAME':            'GetUser',
+      'X-EBAY-API-SITEID':               '0',
+    },
+    body: xml,
+  });
+
+  const text  = await res.text();
+  const city  = text.match(/<City>(.*?)<\/City>/)?.[1]?.trim()  ?? '';
+  const state = text.match(/<StateOrProvince>(.*?)<\/StateOrProvince>/)?.[1]?.trim() ?? '';
+  const zip   = text.match(/<PostalCode>(.*?)<\/PostalCode>/)?.[1]?.trim() ?? '';
+
+  const location = city && state ? `${city}, ${state}` : city || zip || '';
+  return ok({ location, postalCode: zip }, env);
 }
 
 // ── /upload-image (eBay EPS) ──────────────────────────────────────────────────
