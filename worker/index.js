@@ -17,6 +17,17 @@
 const EBAY_TOKEN_URL         = 'https://api.ebay.com/identity/v1/oauth2/token';
 const EBAY_SANDBOX_TOKEN_URL = 'https://api.sandbox.ebay.com/identity/v1/oauth2/token';
 
+/** Decode XML/HTML entities in eBay error messages */
+function decodeEntities(str) {
+  return str
+    .replace(/&amp;/g,  '&')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g,  "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g,   '<')
+    .replace(/&gt;/g,   '>');
+}
+
 const USER_SCOPES = [
   'https://api.ebay.com/oauth/api_scope',
   'https://api.ebay.com/oauth/api_scope/sell.inventory',
@@ -378,8 +389,8 @@ async function handleCreateListing(body, env) {
   // ── Parse XML response ────────────────────────────────────────────────────
   const ack         = text.match(/<Ack>(.*?)<\/Ack>/)?.[1];
   const itemId      = text.match(/<ItemID>(\d+)<\/ItemID>/)?.[1];
-  const shortMsg    = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/)?.[1];
-  const longMsg     = text.match(/<LongMessage>(.*?)<\/LongMessage>/)?.[1];
+  const shortMsg    = decodeEntities(text.match(/<ShortMessage>(.*?)<\/ShortMessage>/)?.[1] ?? '');
+  const longMsg     = decodeEntities(text.match(/<LongMessage>(.*?)<\/LongMessage>/)?.[1] ?? '');
 
   if (ack === 'Failure' || (!itemId && ack !== 'Success' && ack !== 'Warning')) {
     return err(longMsg || shortMsg || `Trading API error (${res.status})`, 400, env);
@@ -479,8 +490,8 @@ async function handleUploadImage(body, env) {
   const text = await res.text();
   const ack      = text.match(/<Ack>(.*?)<\/Ack>/)?.[1];
   const fullUrl  = text.match(/<FullURL>(.*?)<\/FullURL>/)?.[1];
-  const shortMsg = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/)?.[1];
-  const longMsg  = text.match(/<LongMessage>(.*?)<\/LongMessage>/)?.[1];
+  const shortMsg = decodeEntities(text.match(/<ShortMessage>(.*?)<\/ShortMessage>/)?.[1] ?? '');
+  const longMsg  = decodeEntities(text.match(/<LongMessage>(.*?)<\/LongMessage>/)?.[1] ?? '');
 
   if ((ack !== 'Success' && ack !== 'Warning') || !fullUrl) {
     return err(longMsg || shortMsg || 'Image upload failed', 400, env);
