@@ -13,11 +13,20 @@ const MAX_IMAGES = 24;
  *  sandbox       — bool
  *  onClose       — () => void
  */
-export default function ImageManagerModal({ images, onChange, accessToken, sandbox, onClose }) {
+export default function ImageManagerModal({ images: initialImages, onChange, accessToken, sandbox, onClose }) {
+  const [images, setImages] = useState(initialImages);
   const fileInputRef = useRef(null);
   const overlayRef = useRef(null);
   const dragIndexRef = useRef(null); // index being dragged
   const [dragOverIndex, setDragOverIndex] = useState(null);
+
+  function updateImages(updater) {
+    setImages((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      onChange(next);
+      return next;
+    });
+  }
 
   // Close on Escape
   useEffect(() => {
@@ -49,19 +58,19 @@ export default function ImageManagerModal({ images, onChange, accessToken, sandb
       error: '',
     }));
 
-    onChange([...images, ...placeholders]);
+    updateImages([...images, ...placeholders]);
 
     await Promise.all(
       placeholders.map(async (ph, i) => {
         try {
           const ebayUrl = await uploadImage(accessToken, selected[i], sandbox);
-          onChange((prev) =>
+          updateImages((prev) =>
             prev.map((img) =>
               img.id !== ph.id ? img : { ...img, ebayUrl, status: 'ready' }
             )
           );
         } catch (err) {
-          onChange((prev) =>
+          updateImages((prev) =>
             prev.map((img) =>
               img.id !== ph.id ? img : { ...img, status: 'error', error: err.message }
             )
@@ -72,7 +81,7 @@ export default function ImageManagerModal({ images, onChange, accessToken, sandb
   }
 
   function removeImage(id) {
-    onChange(images.filter((img) => img.id !== id));
+    updateImages(images.filter((img) => img.id !== id));
   }
 
   // ── Drag and drop reorder ───────────────────────────────────────────────
@@ -99,7 +108,7 @@ export default function ImageManagerModal({ images, onChange, accessToken, sandb
     const next = [...images];
     const [moved] = next.splice(from, 1);
     next.splice(index, 0, moved);
-    onChange(next);
+    updateImages(next);
     dragIndexRef.current = null;
     setDragOverIndex(null);
   }
