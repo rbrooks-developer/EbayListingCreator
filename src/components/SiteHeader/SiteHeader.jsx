@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import UserMenu from '../UserMenu/UserMenu.jsx';
 import styles from './SiteHeader.module.css';
@@ -7,7 +6,7 @@ import styles from './SiteHeader.module.css';
  * Props:
  *  onSignInClick() — opens the auth modal
  */
-export default function SiteHeader({ onSignInClick }) {
+export default function SiteHeader({ onSignInClick, onSignOut }) {
   const { user, loading } = useAuth();
 
   return (
@@ -33,7 +32,7 @@ export default function SiteHeader({ onSignInClick }) {
         <div className={styles.authSlot}>
           {!loading && (
             user
-              ? <UserMenu />
+              ? <UserMenu onSignOut={onSignOut} />
               : (
                 <button className={styles.signInBtn} onClick={onSignInClick}>
                   Sign In

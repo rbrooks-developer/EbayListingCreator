@@ -5,7 +5,7 @@ import styles from './UserMenu.module.css';
 /**
  * Renders the signed-in user's avatar + dropdown menu in the header.
  */
-export default function UserMenu() {
+export default function UserMenu({ onSignOut }) {
   const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
@@ -47,6 +47,7 @@ export default function UserMenu() {
 
   async function handleSignOut() {
     setOpen(false);
+    onSignOut?.();
     await signOut();
   }
 

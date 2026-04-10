@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import SiteHeader from './components/SiteHeader/SiteHeader.jsx';
@@ -19,6 +19,7 @@ import {
   fetchFulfillmentPolicies,
 } from './services/ebayApi.js';
 import { fetchRules } from './services/rulesService.js';
+import { supabase } from './services/authService.js';
 import RulesManager from './components/RulesManager/RulesManager.jsx';
 import FaqPage from './components/FaqPage/FaqPage.jsx';
 
@@ -39,6 +40,14 @@ function AppContent() {
     if (!user) { setRules([]); return; }
     fetchRules().then(setRules).catch(() => {});
   }, [user]);
+
+  // Disconnect eBay whenever the user signs out
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') handleDisconnect();
+    });
+    return () => subscription.unsubscribe();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── eBay connection ─────────────────────────────────────────────────────
   // connectionData persists in sessionStorage (no tokens — just metadata)
@@ -172,6 +181,7 @@ function AppContent() {
           isExchanging={isExchanging}
           exchangeError={exchangeError}
           onDisconnect={handleDisconnect}
+          onSignInClick={() => setAuthModalOpen(true)}
         />
 
         <ListingGrid

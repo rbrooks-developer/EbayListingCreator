@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { buildAuthorizationUrl, isEbayConfigured } from '../../services/ebayApi.js';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import styles from './OAuthSection.module.css';
 
 /**
@@ -9,8 +10,10 @@ import styles from './OAuthSection.module.css';
  *  isExchanging     — bool  (App is mid-callback token exchange)
  *  exchangeError    — string | null
  *  onDisconnect()   => void
+ *  onSignInClick()  => void
  */
-export default function OAuthSection({ connectionData, isExchanging, exchangeError, onDisconnect }) {
+export default function OAuthSection({ connectionData, isExchanging, exchangeError, onDisconnect, onSignInClick }) {
+  const { user } = useAuth();
   const marketplace = 'EBAY_US';
   const [postalCode, setPostalCode] = useState(() => localStorage.getItem('ebay_saved_postal_code') ?? '');
 
@@ -19,6 +22,10 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
   const isConnected = connectionData !== null;
 
   function handleConnect() {
+    if (!user) {
+      onSignInClick?.();
+      return;
+    }
     const url = buildAuthorizationUrl(sandbox);
     sessionStorage.setItem('ebay_marketplace', marketplace);
     sessionStorage.setItem('ebay_postal_code', postalCode.trim());
@@ -94,7 +101,7 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
               <button
                 className={styles.btnConnect}
                 onClick={handleConnect}
-                disabled={!configured || !postalCode.trim()}
+                disabled={!configured || (!!user && !postalCode.trim())}
               >
                 <EbayIcon />
                 Connect Your eBay Account →
