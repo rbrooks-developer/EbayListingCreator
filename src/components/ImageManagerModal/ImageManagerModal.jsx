@@ -165,7 +165,7 @@ export default function ImageManagerModal({ images: initialImages, onChange, acc
                   </div>
                 ) : (
                   <img
-                    src={img.previewUrl}
+                    src={img.ebayUrl || img.previewUrl}
                     alt={img.name}
                     className={styles.tileImg}
                     draggable={false}

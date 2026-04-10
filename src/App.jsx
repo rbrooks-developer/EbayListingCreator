@@ -8,6 +8,7 @@ import ListingGrid from './components/ListingGrid/ListingGrid.jsx';
 import AuthModal from './components/AuthModal/AuthModal.jsx';
 import { useAuth } from './contexts/AuthContext.jsx';
 import { useSessionStorage } from './hooks/useSessionStorage.js';
+import { useLocalStorage } from './hooks/useLocalStorage.js';
 import {
   exchangeCodeForTokens,
   refreshAccessToken,
@@ -52,7 +53,7 @@ function AppContent() {
   const [exchangeError, setExchangeError] = useState(null);
 
   // ── Listings ────────────────────────────────────────────────────────────
-  const [listings, setListings] = useState([]);
+  const [listings, setListings] = useLocalStorage('ebay_listings', []);
 
   // ── Restore access token after page refresh ────────────────────────────
   // connectionData survives in sessionStorage but accessToken is in React state.
@@ -151,6 +152,7 @@ function AppContent() {
     setAccessToken(null);
     setExchangeError(null);
     clearConnection();
+    setListings([]);
     sessionStorage.removeItem('ebay_refresh_token');
     sessionStorage.removeItem('ebay_oauth_state');
     sessionStorage.removeItem('ebay_marketplace');

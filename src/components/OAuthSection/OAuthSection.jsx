@@ -2,17 +2,6 @@ import { useState } from 'react';
 import { buildAuthorizationUrl, isEbayConfigured } from '../../services/ebayApi.js';
 import styles from './OAuthSection.module.css';
 
-const MARKETPLACES = [
-  { value: 'EBAY_US', label: 'United States (EBAY_US)' },
-  { value: 'EBAY_GB', label: 'United Kingdom (EBAY_GB)' },
-  { value: 'EBAY_CA', label: 'Canada (EBAY_CA)' },
-  { value: 'EBAY_AU', label: 'Australia (EBAY_AU)' },
-  { value: 'EBAY_DE', label: 'Germany (EBAY_DE)' },
-  { value: 'EBAY_FR', label: 'France (EBAY_FR)' },
-  { value: 'EBAY_IT', label: 'Italy (EBAY_IT)' },
-  { value: 'EBAY_ES', label: 'Spain (EBAY_ES)' },
-];
-
 /**
  * OAuthSection
  * Props:
@@ -22,7 +11,7 @@ const MARKETPLACES = [
  *  onDisconnect()   => void
  */
 export default function OAuthSection({ connectionData, isExchanging, exchangeError, onDisconnect }) {
-  const [marketplace, setMarketplace] = useState('EBAY_US');
+  const marketplace = 'EBAY_US';
   const [postalCode, setPostalCode] = useState('');
 
   const sandbox = false;
@@ -86,22 +75,6 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
           {/* ── Connect form ── */}
           {!isExchanging && !exchangeError && !isConnected && (
             <div className={styles.connectForm}>
-              <div className={styles.fieldRow}>
-                <div className={styles.field}>
-                  <label htmlFor="marketplace">Marketplace</label>
-                  <select
-                    id="marketplace"
-                    value={marketplace}
-                    onChange={(e) => setMarketplace(e.target.value)}
-                    disabled={!configured}
-                  >
-                    {MARKETPLACES.map((m) => (
-                      <option key={m.value} value={m.value}>{m.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-              </div>
 
               <div className={styles.field} style={{ maxWidth: 180 }}>
                 <label htmlFor="postalCode">Your ZIP / Postal Code</label>
