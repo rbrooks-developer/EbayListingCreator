@@ -12,7 +12,7 @@ import styles from './OAuthSection.module.css';
  */
 export default function OAuthSection({ connectionData, isExchanging, exchangeError, onDisconnect }) {
   const marketplace = 'EBAY_US';
-  const [postalCode, setPostalCode] = useState('');
+  const [postalCode, setPostalCode] = useState(() => localStorage.getItem('ebay_saved_postal_code') ?? '');
 
   const sandbox = false;
   const configured = isEbayConfigured(sandbox);
@@ -22,6 +22,7 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
     const url = buildAuthorizationUrl(sandbox);
     sessionStorage.setItem('ebay_marketplace', marketplace);
     sessionStorage.setItem('ebay_postal_code', postalCode.trim());
+    localStorage.setItem('ebay_saved_postal_code', postalCode.trim());
     window.location.href = url;
   }
 
