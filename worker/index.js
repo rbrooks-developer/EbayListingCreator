@@ -255,9 +255,9 @@ async function handleCreateListing(body, env) {
 
   if (useBusinessPolicies) {
     const returnProfileId  = returnPolicy?.returnPolicyId  ?? '';
-    // Omit payment profile when Best Offer is enabled — eBay rejects the
-    // combination of Best Offer with a payment policy that requires immediate payment.
-    const paymentProfileId = (listing.bestOffer && !isAuction) ? '' : (paymentPolicy?.paymentPolicyId ?? '');
+    // Omit payment profile for auctions and Best Offer listings — eBay rejects
+    // immediate payment policies for both of these listing types.
+    const paymentProfileId = (isAuction || listing.bestOffer) ? '' : (paymentPolicy?.paymentPolicyId ?? '');
     sellerProfilesXml = `
     <SellerProfiles>
       ${fulfillmentPolicyId ? `<SellerShippingProfile><ShippingProfileID>${fulfillmentPolicyId}</ShippingProfileID></SellerShippingProfile>` : ''}
