@@ -28,9 +28,10 @@ export async function fetchRules() {
 
 export async function createRule({ categoryId, categoryName, keywords, aspectName, aspectValue }) {
   assertConfigured();
+  const { data: { user } } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from('listing_rules')
-    .insert({ category_id: categoryId, category_name: categoryName, keywords, aspect_name: aspectName, aspect_value: aspectValue })
+    .insert({ user_id: user.id, category_id: categoryId, category_name: categoryName, keywords, aspect_name: aspectName, aspect_value: aspectValue })
     .select()
     .single();
   if (error) throw new Error(error.message);
