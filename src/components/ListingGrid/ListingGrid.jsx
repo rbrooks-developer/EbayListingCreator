@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createEmptyListing, parseListingFile, exportListingsToExcel } from '../../utils/excelUtils.js';
 import { createListing, fetchAspectsForCategory } from '../../services/ebayApi.js';
 import { applyRules } from '../../utils/rulesEngine.js';
@@ -414,6 +415,43 @@ export default function ListingGrid({
   );
 }
 
+// ── ErrorMsg — tooltip rendered via portal to escape overflow clipping ────────
+
+function ErrorMsg({ message }) {
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);
+
+  function handleMouseEnter() {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    setPos({ x: rect.left, y: rect.bottom + 6 });
+  }
+
+  function handleMouseLeave() {
+    setPos(null);
+  }
+
+  return (
+    <span
+      ref={ref}
+      className={styles.statusMsg}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {message}
+      {pos && createPortal(
+        <div
+          className={styles.errorTooltip}
+          style={{ top: pos.y, left: pos.x }}
+        >
+          {message}
+        </div>,
+        document.body
+      )}
+    </span>
+  );
+}
+
 // ── ListingRow ────────────────────────────────────────────────────────────────
 
 function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onPost, onOpenImages, hasCategories, canPost }) {
@@ -443,10 +481,7 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
         {postStatus === 'error' && (
           <div className={styles.statusError}>
             <span className={styles.statusBadgeError}>Error</span>
-            <span className={styles.statusMsgWrap}>
-              <span className={styles.statusMsg}>{statusError}</span>
-              <span className={styles.errorTooltip}>{statusError}</span>
-            </span>
+            <ErrorMsg message={statusError} />
             <button className={styles.retryBtn} onClick={() => onPost(listing.id)} disabled={!canPost}>
               Retry
             </button>
