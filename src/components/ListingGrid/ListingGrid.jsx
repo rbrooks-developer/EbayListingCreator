@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createEmptyListing, parseListingFile, exportListingsToExcel } from '../../utils/excelUtils.js';
-import { createListing } from '../../services/ebayApi.js';
+import { createListing, fetchAspectsForCategory } from '../../services/ebayApi.js';
 import { applyRules } from '../../utils/rulesEngine.js';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
@@ -180,6 +180,27 @@ export default function ListingGrid({
     setImportStatus('');
   }
 
+  // ── Aspects pre-fetch ────────────────────────────────────────────────────
+  // Silently warms the cache for a set of category IDs so the status
+  // indicator and footer count are accurate without opening each modal.
+
+  async function prewarmAspects(categoryIds) {
+    if (!accessToken || !categoryTreeId) return;
+    const uncached = [...new Set(categoryIds)].filter(
+      (id) => id && !aspectsCache.current.has(id)
+    );
+    await Promise.all(
+      uncached.map(async (id) => {
+        try {
+          const defs = await fetchAspectsForCategory(accessToken, categoryTreeId, id, sandbox);
+          aspectsCache.current.set(id, defs);
+        } catch {
+          // leave uncached — user can open the modal manually
+        }
+      })
+    );
+  }
+
   // ── Excel import ─────────────────────────────────────────────────────────
 
   async function handleFileChange(e) {
@@ -194,6 +215,13 @@ export default function ListingGrid({
       if (imported.length > 0) {
         onChange([...listings, ...imported]);
         setImportStatus(`Imported ${imported.length} listing${imported.length !== 1 ? 's' : ''} from "${file.name}".`);
+        // Pre-fetch aspects for all imported categories so status shows immediately
+        const categoryIds = imported.map((l) => l.categoryId).filter(Boolean);
+        if (categoryIds.length) {
+          await prewarmAspects(categoryIds);
+          // Trigger a re-render so the status dots and footer count update
+          onChange([...listingsRef.current]);
+        }
       } else {
         setImportStatus('No listings found in file.');
       }
@@ -415,7 +443,10 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
         {postStatus === 'error' && (
           <div className={styles.statusError}>
             <span className={styles.statusBadgeError}>Error</span>
-            <span className={styles.statusMsg} title={statusError}>{statusError}</span>
+            <span className={styles.statusMsgWrap}>
+              <span className={styles.statusMsg}>{statusError}</span>
+              <span className={styles.errorTooltip}>{statusError}</span>
+            </span>
             <button className={styles.retryBtn} onClick={() => onPost(listing.id)} disabled={!canPost}>
               Retry
             </button>
