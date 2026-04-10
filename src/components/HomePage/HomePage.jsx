@@ -6,32 +6,32 @@ const FEATURES = [
   {
     icon: '🔌',
     title: 'Connect Once',
-    body: 'Authenticate with your eBay developer credentials and we\'ll pull down every listing category and shipping option available in your marketplace — ready to use across all your listings.',
+    body: 'Authorize with your eBay account and we\'ll pull down every listing category, shipping service, and fulfillment policy for the US marketplace — ready to use across all your listings.',
   },
   {
     icon: '📋',
     title: 'Bulk Import or Manual Entry',
-    body: 'Paste your data into the grid one row at a time, or drop in an Excel / CSV file and import hundreds of listings in seconds. Download our template to get started fast.',
+    body: 'Add rows one at a time or import an Excel / CSV file. Category and shipping service names are resolved automatically. Download the template to see the exact column format.',
+  },
+  {
+    icon: '🖼️',
+    title: 'Image Manager',
+    body: 'Upload up to 24 photos per listing directly to eBay\'s picture service. Drag and drop to reorder — the first image is always the main photo shown in search results.',
   },
   {
     icon: '⚡',
-    title: 'Smart Defaults',
-    body: 'Condition, listing format, auction duration, and best-offer fields are all context-aware. Auction-only fields only appear when you need them — keeping the grid clean.',
+    title: 'Listing Rules',
+    body: 'Create rules that automatically fill in item specifics based on category and title keywords. Sign in once to save your rules and apply them every time you build a listing.',
+  },
+  {
+    icon: '📤',
+    title: 'Post One or All',
+    body: 'Post individual listings with a single click, or use Post All to submit every ready row in one go. Each row shows its status in real time — success, error, or in progress.',
   },
   {
     icon: '🔒',
     title: 'Privacy First',
-    body: 'Your App ID and access token live only in your browser\'s session memory. Nothing is sent to any third-party server. Close the tab and your credentials are gone.',
-  },
-  {
-    icon: '📤',
-    title: 'Export Anytime',
-    body: 'Export your completed listing sheet back to Excel at any point — useful for record-keeping or sharing with a team before pushing listings live to eBay.',
-  },
-  {
-    icon: '🌐',
-    title: 'Works Everywhere',
-    body: 'A fully static React app — no backend, no install, no account. Host it on GitHub Pages for free and access it from any browser, on any device.',
+    body: 'Your eBay access token lives only in browser memory and is cleared when you close the tab. Listings are saved locally in your browser so they survive page refreshes.',
   },
 ];
 
@@ -39,17 +39,17 @@ const STEPS = [
   {
     number: '01',
     label: 'Connect to eBay',
-    detail: 'Enter your eBay developer App ID and Client Secret. We\'ll fetch an access token and download all categories and shipping methods.',
+    detail: 'Enter your ZIP code and click Connect. You\'ll be taken to eBay to authorize the app — then we\'ll download your categories, shipping services, and fulfillment policies automatically.',
   },
   {
     number: '02',
     label: 'Build Your Listings',
-    detail: 'Add rows manually or import a spreadsheet. Fill in titles, descriptions, quantities, conditions, formats, and pricing.',
+    detail: 'Add rows manually or import a spreadsheet. Select a category, fill in item specifics, upload images, choose a shipping policy and method, then set your price and format.',
   },
   {
     number: '03',
-    label: 'Export & Publish',
-    detail: 'Review your listings in the grid, export to Excel for your records, then push them to eBay through the Seller Hub or API.',
+    label: 'Post to eBay',
+    detail: 'Review your listings in the grid, then post them individually or all at once. Each row updates in real time showing the eBay listing ID on success or the error message if something needs fixing.',
   },
 ];
 
@@ -68,9 +68,9 @@ export default function HomePage({ onSignInClick }) {
             <span className={styles.heroAccent}>at scale, in your browser.</span>
           </h1>
           <p className={styles.heroSubtitle}>
-            A developer-friendly tool that connects directly to the eBay API, pulls down
-            your categories and shipping options, and gives you a clean grid to build
-            bulk listings — no backend, no spreadsheet gymnastics.
+            Connect your eBay account, build listings in a clean grid, upload images,
+            and post directly to eBay — one at a time or all at once.
+            No backend, no install, no spreadsheet gymnastics.
           </p>
           <div className={styles.heroCtas}>
             <a href="#oauth" className={styles.ctaPrimary}>
@@ -122,7 +122,7 @@ export default function HomePage({ onSignInClick }) {
       <section className={styles.steps}>
         <div className={styles.sectionInner}>
           <h2 className={styles.sectionTitle}>How it works</h2>
-          <p className={styles.sectionSubtitle}>Three steps from credentials to published listings.</p>
+          <p className={styles.sectionSubtitle}>From connecting your account to live eBay listings in three steps.</p>
           <ol className={styles.stepList}>
             {STEPS.map((s) => (
               <li key={s.number} className={styles.stepItem}>
@@ -142,7 +142,7 @@ export default function HomePage({ onSignInClick }) {
       <section className={styles.features}>
         <div className={styles.sectionInner}>
           <h2 className={styles.sectionTitle}>Everything you need</h2>
-          <p className={styles.sectionSubtitle}>Built for eBay sellers who know their way around a spreadsheet.</p>
+          <p className={styles.sectionSubtitle}>Everything you need to go from zero to live eBay listings.</p>
           <div className={styles.featureGrid}>
             {FEATURES.map((f) => (
               <article key={f.title} className={styles.featureCard}>

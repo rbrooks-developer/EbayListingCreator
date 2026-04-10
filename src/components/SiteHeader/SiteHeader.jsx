@@ -25,8 +25,8 @@ export default function SiteHeader({ onSignInClick }) {
 
         <nav className={styles.nav} aria-label="Page sections">
           <a href="#home">Home</a>
-          <a href="#oauth">1. Connect</a>
-          <a href="#listings">2. Listings</a>
+          <a href="#oauth">Connect to eBay</a>
+          <a href="#listings">Listings</a>
         </nav>
 
         <div className={styles.authSlot}>
