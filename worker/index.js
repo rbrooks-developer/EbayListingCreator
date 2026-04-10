@@ -315,10 +315,14 @@ async function handleCreateListing(body, env) {
     </PictureDetails>` : '';
 
   // ── Best Offer ────────────────────────────────────────────────────────────
-  const bestOfferXml = (listing.bestOffer && !isAuction) ? `
+  const hasBestOffer = listing.bestOffer && parseFloat(listing.bestOffer) > 0 && !isAuction;
+  const bestOfferXml = hasBestOffer ? `
     <BestOfferDetails>
       <BestOfferEnabled>true</BestOfferEnabled>
-    </BestOfferDetails>` : '';
+    </BestOfferDetails>
+    <ListingDetails>
+      <MinimumBestOfferPrice>${parseFloat(listing.bestOffer).toFixed(2)}</MinimumBestOfferPrice>
+    </ListingDetails>` : '';
 
   // ── Build XML ─────────────────────────────────────────────────────────────
   const xml = `<?xml version="1.0" encoding="utf-8"?>
