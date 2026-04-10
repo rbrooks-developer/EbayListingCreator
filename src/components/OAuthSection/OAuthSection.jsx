@@ -120,7 +120,7 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
               <button
                 className={styles.btnConnect}
                 onClick={handleConnect}
-                disabled={!configured}
+                disabled={!configured || !postalCode.trim()}
               >
                 <EbayIcon />
                 Connect Your eBay Account →

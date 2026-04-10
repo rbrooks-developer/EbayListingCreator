@@ -205,8 +205,27 @@
 .colShipping    { min-width: 200px; }
 .colDimension   { width: 72px; }
 .colWeight      { width: 90px; }
-.colImages      { min-width: 200px; }
+.colImages      { width: 100px; }
 .colActions     { width: 44px; text-align: center; }
+
+.imagesBtn {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-light);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  text-align: center;
+}
+.imagesBtn:hover {
+  border-color: var(--ebay-blue);
+  color: var(--ebay-blue);
+  background: rgba(54, 101, 243, 0.04);
+}
 
 /* Cell inputs */
 .cellInput {

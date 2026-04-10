@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createEmptyListing, parseListingFile, exportListingsToExcel } from '../../utils/excelUtils.js';
-import { createListing, uploadImage } from '../../services/ebayApi.js';
+import { createListing } from '../../services/ebayApi.js';
 import { applyRules } from '../../utils/rulesEngine.js';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
-import ImagePicker from '../ImagePicker/ImagePicker.jsx';
+import ImageManagerModal from '../ImageManagerModal/ImageManagerModal.jsx';
 import styles from './ListingGrid.module.css';
 
 const CONDITIONS = ['New', 'Used'];
@@ -69,92 +69,12 @@ export default function ListingGrid({
 }) {
   const [importErrors, setImportErrors] = useState([]);
   const [importStatus, setImportStatus] = useState('');
-  const [aspectsListingId, setAspectsListingId] = useState(null); // which row's modal is open
+  const [aspectsListingId, setAspectsListingId] = useState(null);
+  const [imageModalListingId, setImageModalListingId] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Shared image file input — single element so the browser remembers the last directory
-  const imageFileInputRef = useRef(null);
-  const imageTargetIdRef = useRef(null); // which listing row is adding images
-
-  function openImagePicker(listingId) {
-    imageTargetIdRef.current = listingId;
-    imageFileInputRef.current?.click();
-  }
-
-  async function handleImageFiles(e) {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = ''; // reset so the same files can be re-selected
-    const targetId = imageTargetIdRef.current;
-    if (!files.length || !targetId || !accessToken) return;
-
-    // Create placeholder entries immediately so thumbnails appear while uploading
-    const placeholders = files.map((f) => ({
-      id: crypto.randomUUID(),
-      name: f.name,
-      previewUrl: URL.createObjectURL(f),
-      ebayUrl: '',
-      status: 'uploading',
-      error: '',
-    }));
-
-    // Append placeholders to this listing's images
-    onChange(
-      listings.map((l) =>
-        l.id !== targetId ? l : { ...l, images: [...(l.images ?? []), ...placeholders] }
-      )
-    );
-
-    // Upload each image and update its entry when done
-    await Promise.all(
-      placeholders.map(async (placeholder, i) => {
-        try {
-          const ebayUrl = await uploadImage(accessToken, files[i], sandbox);
-          onChange((prev) =>
-            prev.map((l) =>
-              l.id !== targetId ? l : {
-                ...l,
-                images: l.images.map((img) =>
-                  img.id !== placeholder.id ? img : { ...img, ebayUrl, status: 'ready' }
-                ),
-              }
-            )
-          );
-        } catch (err) {
-          onChange((prev) =>
-            prev.map((l) =>
-              l.id !== targetId ? l : {
-                ...l,
-                images: l.images.map((img) =>
-                  img.id !== placeholder.id ? img : { ...img, status: 'error', error: err.message }
-                ),
-              }
-            )
-          );
-        }
-      })
-    );
-  }
-
-  function removeImage(listingId, imageId) {
-    onChange(
-      listings.map((l) =>
-        l.id !== listingId ? l : { ...l, images: l.images.filter((img) => img.id !== imageId) }
-      )
-    );
-  }
-
-  function setMainImage(listingId, imageId) {
-    onChange(
-      listings.map((l) => {
-        if (l.id !== listingId) return l;
-        const idx = l.images.findIndex((img) => img.id === imageId);
-        if (idx <= 0) return l;
-        const reordered = [...l.images];
-        const [picked] = reordered.splice(idx, 1);
-        reordered.unshift(picked);
-        return { ...l, images: reordered };
-      })
-    );
+  function updateImages(listingId, images) {
+    onChange(listings.map((l) => l.id !== listingId ? l : { ...l, images }));
   }
 
   // ── Auto-apply rules ────────────────────────────────────────────────────
@@ -303,16 +223,6 @@ export default function ListingGrid({
               style={{ display: 'none' }}
               aria-hidden="true"
             />
-            {/* Shared image picker — single element so browser remembers last directory */}
-            <input
-              ref={imageFileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageFiles}
-              style={{ display: 'none' }}
-              aria-hidden="true"
-            />
           </div>
           <div className={styles.toolbarRight}>
             {hasListings && (
@@ -376,9 +286,7 @@ export default function ListingGrid({
                     onRemove={removeRow}
                     onOpenAspects={setAspectsListingId}
                     onPost={handlePost}
-                    onOpenImagePicker={openImagePicker}
-                    onRemoveImage={removeImage}
-                    onSetMainImage={setMainImage}
+                    onOpenImages={() => setImageModalListingId(listing.id)}
                     hasCategories={hasCategories}
                     canPost={!!accessToken}
                   />
@@ -418,13 +326,28 @@ export default function ListingGrid({
           onClose={() => setAspectsListingId(null)}
         />
       )}
+
+      {/* ── Image manager modal ── */}
+      {imageModalListingId && (() => {
+        const listing = listings.find((l) => l.id === imageModalListingId);
+        if (!listing) return null;
+        return (
+          <ImageManagerModal
+            images={listing.images ?? []}
+            onChange={(images) => updateImages(imageModalListingId, images)}
+            accessToken={accessToken}
+            sandbox={sandbox}
+            onClose={() => setImageModalListingId(null)}
+          />
+        );
+      })()}
     </section>
   );
 }
 
 // ── ListingRow ────────────────────────────────────────────────────────────────
 
-function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onPost, onOpenImagePicker, onRemoveImage, onSetMainImage, hasCategories, canPost }) {
+function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onPost, onOpenImages, hasCategories, canPost }) {
   const isAuction = listing.listingType === 'Auction';
   const aspectsStatus = getAspectsStatus(listing, aspectsCache.current);
   const statusCfg = STATUS_CONFIG[aspectsStatus];
@@ -730,12 +653,16 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
 
       {/* Images */}
       <td className={styles.colImages}>
-        <ImagePicker
-          images={listing.images ?? []}
-          onAddClick={() => onOpenImagePicker(listing.id)}
-          onRemove={(imageId) => onRemoveImage(listing.id, imageId)}
-          onSetMain={(imageId) => onSetMainImage(listing.id, imageId)}
-        />
+        <button
+          className={styles.imagesBtn}
+          onClick={onOpenImages}
+          type="button"
+          title="Manage images"
+        >
+          {(listing.images ?? []).length > 0
+            ? `${listing.images.length} image${listing.images.length !== 1 ? 's' : ''}`
+            : '+ Images'}
+        </button>
       </td>
 
       {/* Remove */}
