@@ -96,21 +96,28 @@ export default function HomePage({ onSignInClick }) {
             </div>
             <div className={styles.mockTable}>
               <div className={styles.mockThead}>
-                {['Title', 'Qty', 'Condition', 'Format', 'Best Offer'].map((h) => (
+                {['Status', 'Title', 'Category', 'Price', 'Condition', 'Images'].map((h) => (
                   <div key={h} className={styles.mockTh}>{h}</div>
                 ))}
               </div>
               {[
-                ['Vintage Camera Lens 50mm', '3', 'Used', 'Buy It Now', '$45'],
-                ['Mechanical Keyboard RGB', '12', 'New', 'Buy It Now', '$80'],
-                ['Antique Pocket Watch', '1', 'Used', 'Auction', '—'],
-                ['Gaming Headset 7.1', '5', 'New', 'Buy It Now', '$30'],
-                ['Rare Vinyl Record LP', '2', 'Used', 'Auction', '—'],
+                { status: 'listed', title: 'Funko Pop Vinyl Figure', category: 'Bobbleheads', price: '$18.99', condition: 'New',  images: '3' },
+                { status: 'listed', title: 'Vintage Camera Lens 50mm', category: 'Film Cameras', price: '$45.00', condition: 'Used', images: '5' },
+                { status: 'error',  title: 'Mechanical Keyboard RGB', category: 'Keyboards',    price: '$79.99', condition: 'New',  images: '2' },
+                { status: 'ready',  title: 'Antique Pocket Watch',    category: 'Pocket Watches', price: '$120.00', condition: 'Used', images: '4' },
+                { status: 'ready',  title: 'Rare Vinyl Record LP',    category: 'Records',        price: '$34.00', condition: 'Used', images: '1' },
               ].map((row, i) => (
                 <div key={i} className={styles.mockRow} style={{ '--delay': `${i * 0.08}s` }}>
-                  {row.map((cell, j) => (
-                    <div key={j} className={styles.mockTd}>{cell}</div>
-                  ))}
+                  <div className={styles.mockTd}>
+                    <span className={`${styles.mockBadge} ${styles[`mockBadge_${row.status}`]}`}>
+                      {row.status === 'listed' ? 'Listed' : row.status === 'error' ? 'Error' : 'Post'}
+                    </span>
+                  </div>
+                  <div className={styles.mockTd}>{row.title}</div>
+                  <div className={styles.mockTd}>{row.category}</div>
+                  <div className={styles.mockTd}>{row.price}</div>
+                  <div className={styles.mockTd}>{row.condition}</div>
+                  <div className={styles.mockTd}>{row.images} 📷</div>
                 </div>
               ))}
             </div>

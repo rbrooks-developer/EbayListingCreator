@@ -20,6 +20,7 @@ import {
 } from './services/ebayApi.js';
 import { fetchRules } from './services/rulesService.js';
 import RulesManager from './components/RulesManager/RulesManager.jsx';
+import FaqPage from './components/FaqPage/FaqPage.jsx';
 
 function AppContent() {
   const { user } = useAuth();
@@ -202,6 +203,8 @@ function AppContent() {
           aspectsCache={aspectsCache}
           onSignInClick={() => setAuthModalOpen(true)}
         />
+
+        <FaqPage />
       </main>
 
       <AuthModal

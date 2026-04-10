@@ -172,7 +172,7 @@
 
 .mockThead {
   display: grid;
-  grid-template-columns: 2fr 0.6fr 1fr 1.1fr 0.9fr;
+  grid-template-columns: 0.7fr 2fr 1.2fr 0.8fr 0.8fr 0.6fr;
   padding: 0.4rem 0.75rem;
   background: #f8f8f8;
   border-bottom: 1px solid #ebebeb;
@@ -189,7 +189,7 @@
 
 .mockRow {
   display: grid;
-  grid-template-columns: 2fr 0.6fr 1fr 1.1fr 0.9fr;
+  grid-template-columns: 0.7fr 2fr 1.2fr 0.8fr 0.8fr 0.6fr;
   padding: 0 0.75rem;
   border-bottom: 1px solid #f4f4f4;
   animation: rowFadeIn 0.4s ease-out var(--delay, 0s) both;
@@ -211,6 +211,32 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+
+.mockBadge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.mockBadge_listed {
+  background: #e6f4ea;
+  color: #2e7d32;
+}
+
+.mockBadge_error {
+  background: #fdecea;
+  color: #c62828;
+}
+
+.mockBadge_ready {
+  background: #e8eef9;
+  color: #3665f3;
 }
 
 /* ── Section shared ──────────────────────────────────────────────────────── */
