@@ -22,10 +22,11 @@ function groupLabel(category) {
 }
 
 function daysLabel(min, max) {
-  const a = min && min > 0 ? min : null;
-  const b = max && max > 0 ? max : null;
+  const a = min != null && Number(min) > 0 ? Number(min) : null;
+  const b = max != null && Number(max) > 0 ? Number(max) : null;
   if (!a && !b) return '';
-  if (a === b) return `${a} day${a !== 1 ? 's' : ''}`;
+  if (a === b || (!a && b)) return `${a ?? b} day${(a ?? b) !== 1 ? 's' : ''}`;
+  if (!b && a) return `${a} day${a !== 1 ? 's' : ''}`;
   if (a && b) return `${a} to ${b} days`;
   return '';
 }

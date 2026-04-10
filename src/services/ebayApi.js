@@ -197,19 +197,24 @@ export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_U
     const ALLOWED_CARRIERS = new Set(['USPS', 'UPS', 'FEDEX']);
 
     const services = (data.shippingServices ?? [])
-      .filter((svc) =>
-        svc.validForSellingFlow &&
-        !svc.internationalService &&
-        ALLOWED_CARRIERS.has(svc.shippingCarrier)
-      )
+      .filter((svc) => {
+        if (!svc.validForSellingFlow) return false;
+        if (svc.internationalService) return false;
+        if (!ALLOWED_CARRIERS.has(svc.shippingCarrier)) return false;
+        const category = (svc.shippingCategory ?? '').toLowerCase();
+        if (category.includes('outside')) return false;
+        const name = (svc.description ?? svc.shippingService ?? '').toLowerCase();
+        if (name.includes('surepost')) return false;
+        return true;
+      })
       .map((svc) => ({
         carrierCode:      svc.shippingCarrier,
         serviceCode:      svc.shippingService,
         serviceName:      svc.description ?? svc.shippingService,
         serviceTypes:     svc.shippingCostTypes ?? [],
         shippingCategory: svc.shippingCategory ?? '',
-        minShippingTime:  svc.shippingTimeMin ?? null,
-        maxShippingTime:  svc.shippingTimeMax ?? null,
+        minShippingTime:  svc.shippingTimeMin ?? svc.minShippingTime ?? null,
+        maxShippingTime:  svc.shippingTimeMax ?? svc.maxShippingTime ?? null,
       }))
       .sort((a, b) => a.serviceName.localeCompare(b.serviceName));
 
