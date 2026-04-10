@@ -5,6 +5,7 @@ import { applyRules } from '../../utils/rulesEngine.js';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
 import ImageManagerModal from '../ImageManagerModal/ImageManagerModal.jsx';
+import ShippingPicker from '../ShippingPicker/ShippingPicker.jsx';
 import styles from './ListingGrid.module.css';
 
 const CONDITIONS = ['New', 'Used'];
@@ -574,19 +575,11 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       {/* Shipping Method */}
       <td className={styles.colShipping}>
         {shippingServices.length > 0 ? (
-          <select
-            className={styles.cellSelect}
+          <ShippingPicker
+            shippingServices={shippingServices}
             value={listing.shippingService}
-            onChange={(e) => field('shippingService', e.target.value)}
-            aria-label="Shipping method"
-          >
-            <option value="">— select —</option>
-            {shippingServices.map((s) => (
-              <option key={`${s.carrierCode}-${s.serviceCode}`} value={s.serviceCode}>
-                {s.carrierCode} — {s.serviceName}
-              </option>
-            ))}
-          </select>
+            onChange={(code) => field('shippingService', code)}
+          />
         ) : (
           <span className={styles.naText}>Connect API</span>
         )}

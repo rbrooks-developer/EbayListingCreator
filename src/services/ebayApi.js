@@ -203,10 +203,13 @@ export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_U
         ALLOWED_CARRIERS.has(svc.shippingCarrier)
       )
       .map((svc) => ({
-        carrierCode:  svc.shippingCarrier,
-        serviceCode:  svc.shippingService,
-        serviceName:  svc.description ?? svc.shippingService,
-        serviceTypes: svc.shippingCostTypes ?? [],
+        carrierCode:      svc.shippingCarrier,
+        serviceCode:      svc.shippingService,
+        serviceName:      svc.description ?? svc.shippingService,
+        serviceTypes:     svc.shippingCostTypes ?? [],
+        shippingCategory: svc.shippingCategory ?? '',
+        minShippingTime:  svc.shippingTimeMin ?? null,
+        maxShippingTime:  svc.shippingTimeMax ?? null,
       }))
       .sort((a, b) => a.serviceName.localeCompare(b.serviceName));
 
