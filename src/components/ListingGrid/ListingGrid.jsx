@@ -72,7 +72,10 @@ export default function ListingGrid({
   const [importStatus, setImportStatus] = useState('');
   const [aspectsListingId, setAspectsListingId] = useState(null);
   const [imageModalListingId, setImageModalListingId] = useState(null);
+  const [isPostingAll, setIsPostingAll] = useState(false);
   const fileInputRef = useRef(null);
+  const listingsRef = useRef(listings);
+  useEffect(() => { listingsRef.current = listings; }, [listings]);
 
   function updateImages(listingId, images) {
     onChange(listings.map((l) => l.id !== listingId ? l : { ...l, images }));
@@ -143,6 +146,31 @@ export default function ListingGrid({
     } catch (e) {
       onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'error', statusError: e.message }));
     }
+  }
+
+  async function handlePostAll() {
+    if (!accessToken || isPostingAll) return;
+    const pending = listings.filter((l) => l.postStatus === 'new' && l.title && l.categoryId);
+    if (!pending.length) return;
+
+    setIsPostingAll(true);
+
+    // Mark all pending as submitting at once
+    onChange(listingsRef.current.map((l) =>
+      pending.some((p) => p.id === l.id) ? { ...l, postStatus: 'submitting', statusError: '' } : l
+    ));
+
+    // Post sequentially to avoid hammering the API
+    for (const listing of pending) {
+      try {
+        const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode);
+        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'success', listingId }));
+      } catch (e) {
+        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'error', statusError: e.message }));
+      }
+    }
+
+    setIsPostingAll(false);
   }
 
   function clearAll() {
@@ -216,6 +244,18 @@ export default function ListingGrid({
             <button className={styles.btnOutline} onClick={onOpenRulesManager}>
               Rules{rules.length > 0 ? ` (${rules.length})` : ''}
             </button>
+            {hasListings && accessToken && (() => {
+              const pendingCount = listings.filter((l) => l.postStatus === 'new' && l.title && l.categoryId).length;
+              return pendingCount > 0 ? (
+                <button
+                  className={styles.btnPrimary}
+                  onClick={handlePostAll}
+                  disabled={isPostingAll}
+                >
+                  {isPostingAll ? 'Posting…' : `Post All (${pendingCount})`}
+                </button>
+              ) : null;
+            })()}
             <input
               ref={fileInputRef}
               type="file"
