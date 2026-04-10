@@ -315,7 +315,7 @@ async function handleCreateListing(body, env) {
     </PictureDetails>` : '';
 
   // ── Best Offer ────────────────────────────────────────────────────────────
-  const hasBestOffer = listing.bestOffer && parseFloat(listing.bestOffer) > 0 && !isAuction;
+  const hasBestOffer = listing.bestOffer && parseFloat(listing.bestOffer) > 0;
   const bestOfferXml = hasBestOffer ? `
     <BestOfferDetails>
       <BestOfferEnabled>true</BestOfferEnabled>

@@ -1,29 +1,65 @@
 import * as XLSX from 'xlsx';
 
 /**
- * Column header aliases — maps common spreadsheet header names to
- * our internal listing field keys (case-insensitive).
+ * Column header aliases — maps spreadsheet header names to
+ * internal listing field keys (case-insensitive).
  */
 const HEADER_MAP = {
-  title: 'title',
-  'listing title': 'title',
-  description: 'description',
-  desc: 'description',
-  quantity: 'quantity',
-  qty: 'quantity',
-  'quantity available': 'quantity',
-  condition: 'condition',
-  'item condition': 'condition',
-  'listing type': 'listingType',
-  type: 'listingType',
-  format: 'listingType',
-  'auction length': 'auctionDays',
-  'auction days': 'auctionDays',
-  duration: 'auctionDays',
-  'best offer': 'bestOffer',
-  'best offer amount': 'bestOffer',
-  'buy it now price': 'buyItNowPrice',
-  price: 'buyItNowPrice',
+  // Title
+  'title':                'title',
+  'listing title':        'title',
+  // Description
+  'description':          'description',
+  'desc':                 'description',
+  // Category
+  'category':             'categoryName',
+  'category name':        'categoryName',
+  // Quantity
+  'quantity':             'quantity',
+  'qty':                  'quantity',
+  'quantity available':   'quantity',
+  // Condition
+  'condition':            'condition',
+  'item condition':       'condition',
+  // Listing type
+  'listing type':         'listingType',
+  'type':                 'listingType',
+  'format':               'listingType',
+  // Prices
+  'buy it now price':     'price',
+  'price':                'price',
+  'auction start price':  'auctionStartPrice',
+  'start price':          'auctionStartPrice',
+  'best offer price':     'bestOffer',
+  'best offer':           'bestOffer',
+  'best offer amount':    'bestOffer',
+  // Auction
+  'auction days':         'auctionDays',
+  'auction length':       'auctionDays',
+  'duration':             'auctionDays',
+  // Shipping
+  'shipping method':      'shippingService',
+  'shipping service':     'shippingService',
+  'ship method':          'shippingService',
+  // Dimensions
+  'length':               'length',
+  'length (in)':          'length',
+  'width':                'width',
+  'width (in)':           'width',
+  'height':               'height',
+  'height (in)':          'height',
+  // Weight
+  'weight pounds':        'weightLbs',
+  'lbs':                  'weightLbs',
+  'weight lbs':           'weightLbs',
+  'weight ounces':        'weightOz',
+  'oz':                   'weightOz',
+  'weight oz':            'weightOz',
+  // Images
+  'image url':            'imageUrl',
+  'image':                'imageUrl',
+  'images':               'imageUrl',
+  'photo url':            'imageUrl',
 };
 
 const CONDITION_MAP = {
@@ -32,10 +68,11 @@ const CONDITION_MAP = {
 };
 
 const LISTING_TYPE_MAP = {
-  'buy it now': 'BuyItNow',
-  butitnow: 'BuyItNow',
-  bin: 'BuyItNow',
-  auction: 'Auction',
+  'buy it now':  'BuyItNow',
+  'buyitnow':    'BuyItNow',
+  'bin':         'BuyItNow',
+  'fixed price': 'BuyItNow',
+  'auction':     'Auction',
 };
 
 const VALID_AUCTION_DAYS = [3, 5, 7, 10];
@@ -68,28 +105,47 @@ export function parseListingFile(file) {
         const listings = [];
 
         rows.slice(1).forEach((row, rowIdx) => {
-          const lineNum = rowIdx + 2; // 1-based, accounting for header row
+          // Skip completely empty rows
+          if (row.every((cell) => String(cell).trim() === '')) return;
+
+          const lineNum = rowIdx + 2;
           const entry = createEmptyListing();
 
           fieldKeys.forEach((key, colIdx) => {
             if (!key) return;
             const raw = String(row[colIdx] ?? '').trim();
+
+            // Image URLs get converted to the images array format
+            if (key === 'imageUrl') {
+              if (raw) {
+                entry.images = raw.split(/[,;|]/).map((url) => url.trim()).filter(Boolean).map((url) => ({
+                  id:         crypto.randomUUID(),
+                  name:       url.split('/').pop() || 'image',
+                  previewUrl: url,
+                  ebayUrl:    url,
+                  status:     'ready',
+                  error:      '',
+                }));
+              }
+              return;
+            }
+
             entry[key] = raw;
           });
 
           // Normalize condition
           const condLower = entry.condition.toLowerCase();
-          entry.condition = CONDITION_MAP[condLower] ?? entry.condition;
+          entry.condition = CONDITION_MAP[condLower] ?? (entry.condition || 'New');
 
           // Normalize listing type
-          const typeLower = entry.listingType.toLowerCase().replace(/\s+/g, '');
-          entry.listingType = LISTING_TYPE_MAP[typeLower] ?? entry.listingType;
+          const typeLower = entry.listingType.toLowerCase().replace(/\s+/g, ' ').trim();
+          entry.listingType = LISTING_TYPE_MAP[typeLower] ?? (entry.listingType || 'BuyItNow');
 
           // Normalize auction days
           if (entry.auctionDays !== '') {
             const days = parseInt(entry.auctionDays, 10);
             if (!VALID_AUCTION_DAYS.includes(days)) {
-              errors.push(`Row ${lineNum}: Auction length "${entry.auctionDays}" is not valid (must be 3, 5, 7, or 10).`);
+              errors.push(`Row ${lineNum}: Auction Days "${entry.auctionDays}" is not valid (must be 3, 5, 7, or 10).`);
             }
             entry.auctionDays = String(days);
           }
@@ -100,7 +156,7 @@ export function parseListingFile(file) {
             if (isNaN(qty) || qty < 1) {
               errors.push(`Row ${lineNum}: Quantity "${entry.quantity}" must be a positive integer.`);
             }
-            entry.quantity = String(qty);
+            entry.quantity = String(Math.max(1, qty || 1));
           }
 
           listings.push(entry);
@@ -126,24 +182,67 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
   const headers = [
     'Title',
     'Description',
-    'Quantity',
+    'Category',
+    'Qty',
     'Condition',
     'Listing Type',
+    'Buy It Now Price',
+    'Auction Start Price',
     'Auction Days',
-    'Best Offer',
+    'Best Offer Price',
+    'Shipping Method',
+    'Length (in)',
+    'Width (in)',
+    'Height (in)',
+    'Weight Pounds',
+    'Weight Ounces',
+    'Image URL',
   ];
 
   const rows = listings.map((l) => [
     l.title,
     l.description,
+    l.categoryName ?? '',
     l.quantity,
     l.condition,
-    l.listingType,
+    l.listingType === 'BuyItNow' ? 'Buy It Now' : l.listingType,
+    l.price,
+    l.auctionStartPrice,
     l.auctionDays,
     l.bestOffer,
+    l.shippingService,
+    l.length,
+    l.width,
+    l.height,
+    l.weightLbs,
+    l.weightOz,
+    // Export the first ready image URL if any
+    l.images?.find((img) => img.ebayUrl)?.ebayUrl ?? '',
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 50 }, // Title
+    { wch: 40 }, // Description
+    { wch: 30 }, // Category
+    { wch: 6  }, // Qty
+    { wch: 10 }, // Condition
+    { wch: 14 }, // Listing Type
+    { wch: 16 }, // Buy It Now Price
+    { wch: 18 }, // Auction Start Price
+    { wch: 13 }, // Auction Days
+    { wch: 16 }, // Best Offer Price
+    { wch: 28 }, // Shipping Method
+    { wch: 10 }, // Length
+    { wch: 10 }, // Width
+    { wch: 10 }, // Height
+    { wch: 14 }, // Weight Pounds
+    { wch: 14 }, // Weight Ounces
+    { wch: 50 }, // Image URL
+  ];
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Listings');
   XLSX.writeFile(wb, filename);
@@ -156,29 +255,29 @@ export function createEmptyListing() {
   return {
     id: crypto.randomUUID(),
     // Submission status
-    postStatus: 'new',    // 'new' | 'submitting' | 'success' | 'error'
-    listingId: '',        // eBay listing ID on success
-    statusError: '',      // error message on failure
+    postStatus:   'new',
+    listingId:    '',
+    statusError:  '',
     // Listing fields
-    title: '',
-    description: '',
-    price: '',            // Buy It Now price
-    quantity: '1',
-    condition: 'New',
-    listingType: 'BuyItNow',
-    auctionDays: '',
+    title:            '',
+    description:      '',
+    price:            '',
+    quantity:         '1',
+    condition:        'New',
+    listingType:      'BuyItNow',
+    auctionDays:      '',
     auctionStartPrice: '',
-    bestOffer: '',
-    categoryId: '',
-    categoryName: '',
-    aspects: {},
+    bestOffer:        '',
+    categoryId:       '',
+    categoryName:     '',
+    aspects:          {},
     fulfillmentPolicyId: '',
-    shippingService: '',
-    length: '',
-    width: '',
-    height: '',
-    weightLbs: '',
-    weightOz: '',
-    images: [],  // [{ id, name, previewUrl, ebayUrl, status, error }]
+    shippingService:  '',
+    length:           '',
+    width:            '',
+    height:           '',
+    weightLbs:        '',
+    weightOz:         '',
+    images:           [],
   };
 }
