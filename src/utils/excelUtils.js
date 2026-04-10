@@ -80,9 +80,11 @@ const VALID_AUCTION_DAYS = [3, 5, 7, 10];
 /**
  * Parse an uploaded Excel or CSV file and return an array of listing objects.
  * @param {File} file
+ * @param {object[]} categories        — [{ categoryId, categoryName, fullPath }]
+ * @param {object[]} shippingServices  — [{ serviceCode, serviceName }]
  * @returns {Promise<{listings: object[], errors: string[]}>}
  */
-export function parseListingFile(file) {
+export function parseListingFile(file, categories = [], shippingServices = []) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -157,6 +159,53 @@ export function parseListingFile(file) {
               errors.push(`Row ${lineNum}: Quantity "${entry.quantity}" must be a positive integer.`);
             }
             entry.quantity = String(Math.max(1, qty || 1));
+          }
+
+          // Resolve category name → categoryId
+          if (entry.categoryName && categories.length > 0) {
+            // Normalize separators: both " > " and ">" should match
+            const normalize = (s) => s.toLowerCase().replace(/\s*>\s*/g, ' > ').trim();
+            const nameLower = normalize(entry.categoryName);
+            const match = categories.find(
+              (c) =>
+                normalize(c.categoryName) === nameLower ||
+                normalize(c.fullPath ?? '') === nameLower
+            );
+            if (match) {
+              entry.categoryId   = match.categoryId;
+              entry.categoryName = match.categoryName;
+            } else {
+              // Partial match fallback: last segment of the path
+              const lastSegment = nameLower.split('>').pop().trim();
+              const partial = categories.find(
+                (c) => normalize(c.categoryName) === lastSegment
+              );
+              if (partial) {
+                entry.categoryId   = partial.categoryId;
+                entry.categoryName = partial.categoryName;
+              } else {
+                errors.push(`Row ${lineNum}: Category "${entry.categoryName}" not found — select it manually.`);
+              }
+            }
+          }
+
+          // Resolve shipping service name → serviceCode
+          if (entry.shippingService && shippingServices.length > 0) {
+            const normalize = (s) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+            const svcLower = normalize(entry.shippingService);
+            const match = shippingServices.find(
+              (s) =>
+                normalize(s.serviceName) === svcLower ||
+                normalize(s.serviceCode) === svcLower ||
+                // Partial: input is a substring of the service name or vice versa
+                normalize(s.serviceName).includes(svcLower) ||
+                svcLower.includes(normalize(s.serviceName))
+            );
+            if (match) {
+              entry.shippingService = match.serviceCode;
+            } else {
+              errors.push(`Row ${lineNum}: Shipping method "${entry.shippingService}" not found — select it manually.`);
+            }
           }
 
           listings.push(entry);

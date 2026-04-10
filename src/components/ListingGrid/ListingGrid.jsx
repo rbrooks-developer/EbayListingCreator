@@ -161,7 +161,7 @@ export default function ListingGrid({
     setImportErrors([]);
     setImportStatus('Parsing file...');
     try {
-      const { listings: imported, errors } = await parseListingFile(file);
+      const { listings: imported, errors } = await parseListingFile(file, categories, shippingServices);
       setImportErrors(errors);
       if (imported.length > 0) {
         onChange([...listings, ...imported]);
