@@ -41,9 +41,19 @@ export function AuthProvider({ children }) {
     return () => subscription?.unsubscribe();
   }, []);
 
+  async function getAccessToken() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   const value = {
     user,
     loading,
+    getAccessToken,
     signUp: signUpWithEmail,
     signIn: signInWithEmail,
     signInWithProvider: providerSignIn,

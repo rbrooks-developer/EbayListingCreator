@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
+import { openCustomerPortal } from '../../services/billingService.js';
 import styles from './UserMenu.module.css';
 
 /**
@@ -7,7 +9,9 @@ import styles from './UserMenu.module.css';
  */
 export default function UserMenu({ onSignOut }) {
   const { user, signOut } = useAuth();
+  const { usage } = useSubscription();
   const [open, setOpen] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const menuRef = useRef(null);
 
   // Close on outside click
@@ -51,6 +55,18 @@ export default function UserMenu({ onSignOut }) {
     await signOut();
   }
 
+  async function handleManagePlan() {
+    setOpen(false);
+    setPortalLoading(true);
+    try {
+      await openCustomerPortal();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
   return (
     <div className={styles.wrapper} ref={menuRef}>
       <button
@@ -78,6 +94,18 @@ export default function UserMenu({ onSignOut }) {
           </div>
 
           <div className={styles.dropdownDivider} />
+
+          {usage && usage.tier !== 'free' && (
+            <button
+              className={styles.dropdownItem}
+              role="menuitem"
+              onClick={handleManagePlan}
+              disabled={portalLoading}
+            >
+              <span aria-hidden="true">&#9881;</span>
+              {portalLoading ? 'Opening…' : 'Manage Plan'}
+            </button>
+          )}
 
           <button
             className={styles.dropdownItem}

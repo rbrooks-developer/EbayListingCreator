@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom';
 import { createEmptyListing, parseListingFile, exportListingsToExcel } from '../../utils/excelUtils.js';
 import { createListing, fetchAspectsForCategory } from '../../services/ebayApi.js';
 import { applyRules } from '../../utils/rulesEngine.js';
+import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
+import UsageBanner from '../UsageBanner/UsageBanner.jsx';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
 import ImageManagerModal from '../ImageManagerModal/ImageManagerModal.jsx';
@@ -69,6 +72,9 @@ export default function ListingGrid({
   aspectsCache,
   onOpenRulesManager,
 }) {
+  const { getAccessToken } = useAuth();
+  const { refresh: refreshUsage } = useSubscription();
+
   const [importErrors, setImportErrors] = useState([]);
   const [importStatus, setImportStatus] = useState('');
   const [aspectsListingId, setAspectsListingId] = useState(null);
@@ -142,10 +148,15 @@ export default function ListingGrid({
     onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'submitting', statusError: '' }));
 
     try {
-      const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode);
+      const supabaseToken = await getAccessToken();
+      const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
       onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'success', listingId }));
+      refreshUsage();
     } catch (e) {
-      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'error', statusError: e.message }));
+      const errMsg = e.message === 'limit_reached'
+        ? 'Monthly listing limit reached. Upgrade your plan to continue posting.'
+        : e.message;
+      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'error', statusError: errMsg }));
     }
   }
 
@@ -162,15 +173,20 @@ export default function ListingGrid({
     ));
 
     // Post sequentially to avoid hammering the API
+    const supabaseToken = await getAccessToken();
     for (const listing of pending) {
       try {
-        const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode);
+        const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
         onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'success', listingId }));
       } catch (e) {
-        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'error', statusError: e.message }));
+        const errMsg = e.message === 'limit_reached'
+          ? 'Monthly listing limit reached. Upgrade your plan to continue posting.'
+          : e.message;
+        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'error', statusError: errMsg }));
+        if (e.message === 'limit_reached') break; // no point posting further
       }
     }
-
+    refreshUsage();
     setIsPostingAll(false);
   }
 
@@ -262,6 +278,9 @@ export default function ListingGrid({
             )}
           </p>
         </div>
+
+        {/* ── Usage banner (shown when signed in) ── */}
+        <UsageBanner />
 
         {/* ── Toolbar ── */}
         <div className={styles.toolbar}>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext.jsx';
+import { SubscriptionProvider } from './contexts/SubscriptionContext.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import SiteHeader from './components/SiteHeader/SiteHeader.jsx';
 import HomePage from './components/HomePage/HomePage.jsx';
@@ -22,6 +23,7 @@ import { fetchRules } from './services/rulesService.js';
 import { supabase } from './services/authService.js';
 import RulesManager from './components/RulesManager/RulesManager.jsx';
 import FaqPage from './components/FaqPage/FaqPage.jsx';
+import CheckoutNotice from './components/CheckoutNotice/CheckoutNotice.jsx';
 
 function AppContent() {
   const { user } = useAuth();
@@ -217,6 +219,8 @@ function AppContent() {
         <FaqPage />
       </main>
 
+      <CheckoutNotice />
+
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
@@ -229,7 +233,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <AppContent />
+        <SubscriptionProvider>
+          <AppContent />
+        </SubscriptionProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

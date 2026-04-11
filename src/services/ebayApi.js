@@ -272,8 +272,8 @@ export async function uploadImage(accessToken, file, sandbox = false) {
 
 // ── Create listing ────────────────────────────────────────────────────────────
 
-export async function createListing(accessToken, listing, marketplaceId, sandbox = false, defaultLocation = '', defaultPostalCode = '') {
-  return workerPost('listing', { token: accessToken, listing, marketplaceId, sandbox, defaultLocation, defaultPostalCode });
+export async function createListing(accessToken, listing, marketplaceId, sandbox = false, defaultLocation = '', defaultPostalCode = '', supabaseToken = null) {
+  return workerPost('listing', { token: accessToken, listing, marketplaceId, sandbox, defaultLocation, defaultPostalCode, supabaseToken });
 }
 
 // ── Category aspects ──────────────────────────────────────────────────────────
