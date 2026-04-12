@@ -303,7 +303,10 @@ export async function fetchAspectsForCategory(accessToken, categoryTreeId, categ
   return (data.aspects ?? []).map((a) => ({
     aspectName:        a.localizedAspectName ?? '',
     aspectRequired:    a.aspectConstraint?.aspectRequired === true,
-    aspectUsage:       a.aspectConstraint?.aspectUsage ?? 'OPTIONAL',
+    // If aspectRequired is explicitly true, treat as REQUIRED regardless of aspectUsage
+    aspectUsage:       a.aspectConstraint?.aspectRequired === true
+      ? 'REQUIRED'
+      : (a.aspectConstraint?.aspectUsage ?? 'OPTIONAL'),
     aspectMode:        a.aspectConstraint?.aspectMode ?? 'FREE_TEXT',
     aspectCardinality: a.aspectConstraint?.itemToAspectCardinality ?? 'SINGLE',
     aspectValues:      (a.aspectValues ?? []).map((v) => v.localizedValue ?? ''),

@@ -192,7 +192,11 @@ export default function ListingGrid({
     try {
       const data = await fetchConditionPolicies(accessToken, categoryId, marketplace, sandbox);
       policiesCache.current.set(categoryId, data);
-      const hasDescriptors = (data.itemConditions ?? []).some(
+      // eBay response: { itemConditionPolicies: [{ itemConditions: [...] }] }
+      const itemConditions =
+        data?.itemConditionPolicies?.[0]?.itemConditions ??
+        data?.itemConditions ?? [];
+      const hasDescriptors = itemConditions.some(
         (c) => c.conditionDescriptors?.length > 0
       );
       if (hasDescriptors) {

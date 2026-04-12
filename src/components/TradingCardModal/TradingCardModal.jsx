@@ -88,20 +88,31 @@ export default function TradingCardModal({
 
   const { gradedCondition, ungradedCondition } = useMemo(() => {
     if (!policies) return {};
-    const conditions = policies.itemConditions ?? [];
+    // eBay response: { itemConditionPolicies: [{ itemConditions: [...] }] }
+    const conditions =
+      policies?.itemConditionPolicies?.[0]?.itemConditions ??
+      policies?.itemConditions ?? [];
     return {
-      // conditionId 2750 = Graded
+      // conditionId 2750 = Graded (LIKE_NEW)
       gradedCondition:   conditions.find((c) => c.conditionId === '2750'),
-      // conditionId 4000 = Ungraded
+      // conditionId 4000 = Ungraded (USED_VERY_GOOD)
       ungradedCondition: conditions.find((c) => c.conditionId === '4000'),
     };
   }, [policies]);
 
-  /** Find descriptor values for a given descriptor ID (e.g. "27501" = Grader) */
+  /**
+   * Find descriptor values for a given descriptor ID (e.g. "27501" = Grader).
+   * Normalises eBay's field names (conditionDescriptorValueId / conditionDescriptorValueName)
+   * to a consistent { valueId, value } shape.
+   */
   function getDescriptorValues(condition, descriptorId) {
     if (!condition?.conditionDescriptors) return [];
     const desc = condition.conditionDescriptors.find((d) => d.name === descriptorId);
-    return desc?.values ?? [];
+    if (!desc?.values) return [];
+    return desc.values.map((v) => ({
+      valueId: v.conditionDescriptorValueId ?? v.valueId ?? String(v),
+      value:   v.conditionDescriptorValueName ?? v.value ?? String(v),
+    }));
   }
 
   const graderOptions    = useMemo(() => getDescriptorValues(gradedCondition,   '27501'), [gradedCondition]);
