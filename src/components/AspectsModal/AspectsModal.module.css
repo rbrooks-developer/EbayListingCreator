@@ -83,15 +83,17 @@
 }
 
 /* ── Body ────────────────────────────────────────────────────────────────── */
+/* Block (not flex) so scroll is reliable across all browsers */
 
 .body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  padding: 1rem 1.5rem 2rem;
+}
+
+.body > * + * {
+  margin-top: 0.75rem;
 }
 
 /* ── State boxes ─────────────────────────────────────────────────────────── */
@@ -171,21 +173,9 @@
   font-weight: 700;
 }
 
-.badge_required {
-  background: #fce4ec;
-  color: #b71c1c;
-}
-
-.badge_recommended {
-  background: #fff3e0;
-  color: #e65100;
-}
-
-.badge_optional {
-  background: var(--bg-light);
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-}
+.badge_required    { background: #fce4ec; color: #b71c1c; }
+.badge_recommended { background: #fff3e0; color: #e65100; }
+.badge_optional    { background: var(--bg-light); color: var(--text-muted); border: 1px solid var(--border); }
 
 .groupChevron {
   color: var(--text-muted);
@@ -206,9 +196,7 @@
 }
 
 @media (max-width: 500px) {
-  .groupFields {
-    grid-template-columns: 1fr;
-  }
+  .groupFields { grid-template-columns: 1fr; }
 }
 
 /* ── Individual field ────────────────────────────────────────────────────── */
@@ -223,10 +211,35 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
 }
 
 .required {
   color: var(--error);
+}
+
+/* "list only" / "+ custom" badge on the label */
+.modeBadge {
+  padding: 0.1em 0.45em;
+  border-radius: 100px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.modeLocked {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.modeFree {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
 }
 
 .fieldInput,
@@ -239,6 +252,8 @@
   color: var(--text-primary);
   font-family: inherit;
   transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .fieldInput:focus,
@@ -248,12 +263,90 @@
   box-shadow: 0 0 0 2px rgba(54, 101, 243, 0.12);
 }
 
-.checkboxGroup {
+.fieldInputWarn {
+  border-color: #f59e0b !important;
+  background: #fffbeb;
+}
+
+/* ── ComboBox ────────────────────────────────────────────────────────────── */
+
+.comboWrap {
+  position: relative;
+}
+
+.comboDropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+  list-style: none;
+  margin: 0;
+}
+
+.comboOption {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.comboOption:hover {
+  background: var(--bg-light);
+}
+
+.comboOptionActive {
+  background: #eff6ff;
+  color: var(--ebay-blue);
+  font-weight: 600;
+}
+
+.comboWarn {
+  font-size: 0.7rem;
+  color: #b45309;
+  margin: 0.2rem 0 0;
+}
+
+/* ── Searchable checkbox group ───────────────────────────────────────────── */
+
+.searchableCheckbox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.checkboxSearch {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  background: var(--bg-white);
+  color: var(--text-primary);
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.checkboxSearch:focus {
+  outline: none;
+  border-color: var(--ebay-blue);
+}
+
+.checkboxList {
+  max-height: 130px;
+  overflow-y: auto;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  max-height: 100px;
-  overflow-y: auto;
+  gap: 0.3rem;
+  padding: 0.25rem 0;
 }
 
 .checkboxLabel {
@@ -267,6 +360,12 @@
 
 .checkboxLabel input[type="checkbox"] {
   accent-color: var(--ebay-blue);
+}
+
+.noResults {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* ── Footer ──────────────────────────────────────────────────────────────── */
@@ -305,14 +404,8 @@
   transition: background 0.15s;
 }
 
-.btnPrimary:hover:not(:disabled) {
-  background: #2a55e0;
-}
-
-.btnPrimary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.btnPrimary:hover:not(:disabled) { background: #2a55e0; }
+.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btnSecondary {
   padding: 0.5rem 1.1rem;

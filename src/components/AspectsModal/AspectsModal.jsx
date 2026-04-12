@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchAspectsForCategory } from '../../services/ebayApi.js';
 import styles from './AspectsModal.module.css';
 
@@ -23,9 +23,9 @@ export default function AspectsModal({
   onClose,
 }) {
   const [loadStatus, setLoadStatus] = useState('idle'); // idle | loading | error | ready
-  const [loadError, setLoadError] = useState('');
-  const [aspectDefs, setAspectDefs] = useState([]); // normalised aspect definitions
-  const [values, setValues] = useState({ ...listing.aspects }); // working copy
+  const [loadError, setLoadError]   = useState('');
+  const [aspectDefs, setAspectDefs] = useState([]);
+  const [values, setValues]         = useState({ ...listing.aspects });
 
   const overlayRef = useRef(null);
 
@@ -33,7 +33,6 @@ export default function AspectsModal({
   useEffect(() => {
     if (!listing.categoryId) return;
 
-    // Check cache first
     if (aspectsCache.current.has(listing.categoryId)) {
       setAspectDefs(aspectsCache.current.get(listing.categoryId));
       setLoadStatus('ready');
@@ -75,7 +74,6 @@ export default function AspectsModal({
   }
 
   function handleSave() {
-    // Strip empty values before saving
     const cleaned = {};
     Object.entries(values).forEach(([k, v]) => {
       const trimmed = Array.isArray(v) ? v.filter(Boolean) : (v ?? '').trim();
@@ -85,12 +83,10 @@ export default function AspectsModal({
     onClose();
   }
 
-  // Group aspects by usage tier
-  const required     = aspectDefs.filter((a) => a.aspectUsage === 'REQUIRED');
-  const recommended  = aspectDefs.filter((a) => a.aspectUsage === 'RECOMMENDED');
-  const optional     = aspectDefs.filter((a) => a.aspectUsage === 'OPTIONAL');
+  const required    = aspectDefs.filter((a) => a.aspectUsage === 'REQUIRED');
+  const recommended = aspectDefs.filter((a) => a.aspectUsage === 'RECOMMENDED');
+  const optional    = aspectDefs.filter((a) => a.aspectUsage === 'OPTIONAL');
 
-  // Can only save once all required aspects are filled
   const missingRequired = required.filter((a) => {
     const v = values[a.aspectName];
     return !v || (Array.isArray(v) ? v.every((x) => !x) : v.trim() === '');
@@ -121,7 +117,7 @@ export default function AspectsModal({
           </button>
         </div>
 
-        {/* Body */}
+        {/* Body — plain block scroll container (flex causes unreliable scroll) */}
         <div className={styles.body}>
           {loadStatus === 'loading' && (
             <div className={styles.stateBox}>
@@ -210,7 +206,7 @@ export default function AspectsModal({
 // ── AspectGroup ───────────────────────────────────────────────────────────────
 
 function AspectGroup({ title, badge, aspects, values, onChange, collapsible }) {
-  const [collapsed, setCollapsed] = useState(collapsible); // optional starts collapsed
+  const [collapsed, setCollapsed] = useState(collapsible);
 
   return (
     <div className={styles.group}>
@@ -226,7 +222,10 @@ function AspectGroup({ title, badge, aspects, values, onChange, collapsible }) {
           {aspects.length}
         </span>
         {collapsible && (
-          <span className={`${styles.groupChevron} ${collapsed ? '' : styles.groupChevronOpen}`} aria-hidden="true">
+          <span
+            className={`${styles.groupChevron} ${collapsed ? '' : styles.groupChevronOpen}`}
+            aria-hidden="true"
+          >
             &#8964;
           </span>
         )}
@@ -251,82 +250,173 @@ function AspectGroup({ title, badge, aspects, values, onChange, collapsible }) {
 // ── AspectField ───────────────────────────────────────────────────────────────
 
 function AspectField({ aspect, value, onChange }) {
-  const isRequired = aspect.aspectUsage === 'REQUIRED';
-  const isMulti = aspect.aspectCardinality === 'MULTI';
-  const isSelectionOnly = aspect.aspectMode === 'SELECTION_ONLY' && aspect.aspectValues.length > 0;
+  const isRequired     = aspect.aspectUsage === 'REQUIRED';
+  const isMulti        = aspect.aspectCardinality === 'MULTI';
+  const isSelectionOnly = aspect.aspectMode === 'SELECTION_ONLY';
+  const hasOptions     = aspect.aspectValues.length > 0;
 
   const inputId = `aspect-${aspect.aspectName.replace(/\s+/g, '-').toLowerCase()}`;
+  const valArray = Array.isArray(value) ? value : (value ? [value] : []);
+  const valStr   = Array.isArray(value) ? value.join(', ') : (value || '');
 
   return (
     <div className={styles.field}>
       <label htmlFor={inputId} className={styles.fieldLabel}>
         {aspect.aspectName}
         {isRequired && <span className={styles.required} aria-label="required"> *</span>}
+        {hasOptions && (
+          <span
+            className={`${styles.modeBadge} ${isSelectionOnly ? styles.modeLocked : styles.modeFree}`}
+            title={isSelectionOnly ? 'Must select from the provided list' : 'Suggestions shown — you may also type a custom value'}
+          >
+            {isSelectionOnly ? 'list only' : '+ custom'}
+          </span>
+        )}
       </label>
 
-      {isSelectionOnly && !isMulti ? (
-        // Single-value select
-        <select
+      {/* SELECTION_ONLY multi → searchable checkboxes */}
+      {isMulti && isSelectionOnly && hasOptions ? (
+        <SearchableCheckboxGroup
           id={inputId}
-          className={styles.fieldSelect}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="">— select —</option>
-          {aspect.aspectValues.map((v) => (
-            <option key={v} value={v}>{v}</option>
-          ))}
-        </select>
-      ) : isSelectionOnly && isMulti ? (
-        // Multi-value select (checkbox list for manageable option sets, text for large)
-        aspect.aspectValues.length <= 20 ? (
-          <CheckboxGroup
-            options={aspect.aspectValues}
-            selected={Array.isArray(value) ? value : (value ? [value] : [])}
-            onChange={onChange}
-          />
-        ) : (
-          <input
-            id={inputId}
-            type="text"
-            className={styles.fieldInput}
-            value={Array.isArray(value) ? value.join(', ') : value}
-            onChange={(e) => onChange(e.target.value.split(',').map((s) => s.trim()))}
-            placeholder="Comma-separated values"
-          />
-        )
+          options={aspect.aspectValues}
+          selected={valArray}
+          onChange={onChange}
+        />
+      ) : hasOptions ? (
+        /* Any single-value with options, OR free-text multi with options → combobox */
+        <ComboBox
+          id={inputId}
+          options={aspect.aspectValues}
+          value={valStr}
+          onChange={(v) =>
+            isMulti
+              ? onChange(v.split(',').map((s) => s.trim()).filter(Boolean))
+              : onChange(v)
+          }
+          locked={isSelectionOnly}
+          placeholder={isMulti ? 'Type or search, comma-separated…' : undefined}
+        />
       ) : (
-        // Free text
+        /* Pure free text — no options at all */
         <input
           id={inputId}
           type="text"
           className={styles.fieldInput}
-          value={Array.isArray(value) ? value.join(', ') : value}
+          value={valStr}
           onChange={(e) =>
             isMulti
               ? onChange(e.target.value.split(',').map((s) => s.trim()))
               : onChange(e.target.value)
           }
           placeholder={isMulti ? 'Comma-separated values' : ''}
-          list={aspect.aspectValues.length > 0 ? `${inputId}-list` : undefined}
         />
-      )}
-
-      {/* Datalist for free-text with suggestions */}
-      {!isSelectionOnly && aspect.aspectValues.length > 0 && (
-        <datalist id={`${inputId}-list`}>
-          {aspect.aspectValues.slice(0, 200).map((v) => (
-            <option key={v} value={v} />
-          ))}
-        </datalist>
       )}
     </div>
   );
 }
 
-// ── CheckboxGroup ─────────────────────────────────────────────────────────────
+// ── ComboBox ──────────────────────────────────────────────────────────────────
+// Searchable single (or free-text multi) input with a filtered dropdown.
+// locked=true  → user should pick from list; warning shown if typed value not found
+// locked=false → any value accepted; list is suggestions only
 
-function CheckboxGroup({ options, selected, onChange }) {
+function ComboBox({ id, options, value, onChange, locked, placeholder }) {
+  const [query, setQuery] = useState(value || '');
+  const [open, setOpen]   = useState(false);
+  const wrapRef           = useRef(null);
+
+  // Keep local query in sync when parent resets the value
+  useEffect(() => { setQuery(value || ''); }, [value]);
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options.slice(0, 100);
+    return options.filter((o) => o.toLowerCase().includes(q));
+  }, [query, options]);
+
+  const valueInList = useMemo(
+    () => !query || options.some((o) => o.toLowerCase() === query.trim().toLowerCase()),
+    [query, options]
+  );
+
+  function select(opt) {
+    setQuery(opt);
+    onChange(opt);
+    setOpen(false);
+  }
+
+  function handleChange(e) {
+    const v = e.target.value;
+    setQuery(v);
+    setOpen(true);
+    if (!locked) onChange(v);
+  }
+
+  function handleBlur() {
+    // Delay so onMouseDown on an option fires first
+    setTimeout(() => {
+      if (!wrapRef.current?.contains(document.activeElement)) {
+        setOpen(false);
+        // For locked fields: commit the value only if it matches (case-insensitive).
+        // If it doesn't match, keep the typed text but show the warning — eBay will
+        // validate at post time. Don't silently clear the user's input.
+        if (locked && query) {
+          const exact = options.find((o) => o.toLowerCase() === query.trim().toLowerCase());
+          if (exact) { setQuery(exact); onChange(exact); }
+        }
+      }
+    }, 200);
+  }
+
+  return (
+    <div ref={wrapRef} className={styles.comboWrap}>
+      <input
+        id={id}
+        type="text"
+        className={`${styles.fieldInput} ${locked && query && !valueInList ? styles.fieldInputWarn : ''}`}
+        value={query}
+        onChange={handleChange}
+        onFocus={() => setOpen(true)}
+        onBlur={handleBlur}
+        placeholder={placeholder ?? (locked ? 'Search list…' : 'Type or search…')}
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={open}
+        aria-autocomplete="list"
+      />
+      {open && matches.length > 0 && (
+        <ul className={styles.comboDropdown} role="listbox">
+          {matches.map((opt) => (
+            <li
+              key={opt}
+              className={`${styles.comboOption} ${opt === value ? styles.comboOptionActive : ''}`}
+              role="option"
+              aria-selected={opt === value}
+              onMouseDown={(e) => { e.preventDefault(); select(opt); }}
+            >
+              {opt}
+            </li>
+          ))}
+        </ul>
+      )}
+      {locked && query && !valueInList && (
+        <p className={styles.comboWarn}>Not in eBay&apos;s list — may be rejected when posting</p>
+      )}
+    </div>
+  );
+}
+
+// ── SearchableCheckboxGroup ───────────────────────────────────────────────────
+// Used for SELECTION_ONLY multi-value aspects.
+
+function SearchableCheckboxGroup({ id, options, selected, onChange }) {
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? options.filter((o) => o.toLowerCase().includes(q)) : options;
+  }, [search, options]);
+
   function toggle(opt) {
     const next = selected.includes(opt)
       ? selected.filter((s) => s !== opt)
@@ -335,17 +425,31 @@ function CheckboxGroup({ options, selected, onChange }) {
   }
 
   return (
-    <div className={styles.checkboxGroup}>
-      {options.map((opt) => (
-        <label key={opt} className={styles.checkboxLabel}>
-          <input
-            type="checkbox"
-            checked={selected.includes(opt)}
-            onChange={() => toggle(opt)}
-          />
-          {opt}
-        </label>
-      ))}
+    <div className={styles.searchableCheckbox}>
+      {options.length > 8 && (
+        <input
+          type="text"
+          className={styles.checkboxSearch}
+          placeholder="Filter options…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      )}
+      <div className={styles.checkboxList}>
+        {filtered.map((opt) => (
+          <label key={opt} className={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={selected.includes(opt)}
+              onChange={() => toggle(opt)}
+            />
+            {opt}
+          </label>
+        ))}
+        {filtered.length === 0 && (
+          <span className={styles.noResults}>No matches</span>
+        )}
+      </div>
     </div>
   );
 }
