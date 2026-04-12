@@ -402,6 +402,19 @@ async function handleCreateListing(body, env) {
   const listingType = isAuction ? 'Chinese' : 'FixedPriceItem';
   const conditionId = listing.conditionId || CONDITION_MAP[listing.condition] || '1000';
 
+  // ── Trading card category guard ───────────────────────────────────────────
+  // Categories 183050 (Non-Sport), 183454 (CCG), 261328 (Sports) only accept
+  // conditionId 2750 (Graded) or 4000 (Ungraded). If neither is set, reject
+  // early with an actionable message instead of letting eBay return a cryptic error.
+  const TC_CATEGORIES   = new Set(['183050', '183454', '261328']);
+  const TC_CONDITIONS   = new Set(['2750', '4000']);
+  if (TC_CATEGORIES.has(listing.categoryId) && !TC_CONDITIONS.has(conditionId)) {
+    return err(
+      'Trading card listings require a card condition. In the Condition column, select "Graded" or "Ungraded", then fill in the details.',
+      400, env
+    );
+  }
+
   // ── Business Policies ─────────────────────────────────────────────────────
   const accountBase = sandbox
     ? 'https://api.sandbox.ebay.com/sell/account/v1'

@@ -14,6 +14,10 @@ import ShippingPicker from '../ShippingPicker/ShippingPicker.jsx';
 import styles from './ListingGrid.module.css';
 
 const CONDITIONS = ['New', 'Used'];
+
+// These three eBay category IDs always use the trading-card condition system
+// (Graded / Ungraded) regardless of whether the API detection has run yet.
+const KNOWN_TC_CATEGORY_IDS = new Set(['183050', '183454', '261328']);
 const LISTING_TYPES = [
   { value: 'BuyItNow', label: 'Buy It Now' },
   { value: 'Auction', label: 'Auction' },
@@ -83,8 +87,9 @@ export default function ListingGrid({
   const [tcModalInitialType, setTcModalInitialType] = useState('');
   const [imageModalListingId, setImageModalListingId] = useState(null);
   const [isPostingAll, setIsPostingAll] = useState(false);
-  // Set of categoryIds that have condition descriptors (trading card categories)
-  const [tcCategoryIds, setTcCategoryIds] = useState(new Set());
+  // Set of categoryIds that have condition descriptors (trading card categories).
+  // Pre-seeded with the 3 known TC parent IDs; API detection adds more (subcategories).
+  const [tcCategoryIds, setTcCategoryIds] = useState(() => new Set(KNOWN_TC_CATEGORY_IDS));
   const policiesCache = useRef(new Map());
   const fileInputRef = useRef(null);
   const listingsRef = useRef(listings);
@@ -567,7 +572,9 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
   const aspectsStatus = getAspectsStatus(listing, aspectsCache.current);
   const statusCfg = STATUS_CONFIG[aspectsStatus];
   const { postStatus, listingId, statusError } = listing;
-  const isTcCategory = listing.categoryId && tcCategoryIds.has(listing.categoryId);
+  // Known TC parent IDs always trigger the TC UI; API-discovered IDs extend this.
+  const isTcCategory = listing.categoryId &&
+    (KNOWN_TC_CATEGORY_IDS.has(listing.categoryId) || tcCategoryIds.has(listing.categoryId));
 
   function field(name, value) { onUpdate(listing.id, name, value); }
 
