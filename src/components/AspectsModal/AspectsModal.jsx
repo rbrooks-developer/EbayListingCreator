@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchAspectsForCategory } from '../../services/ebayApi.js';
 import styles from './AspectsModal.module.css';
 
@@ -317,16 +318,37 @@ function AspectField({ aspect, value, onChange }) {
 
 // ── ComboBox ──────────────────────────────────────────────────────────────────
 // Searchable single (or free-text multi) input with a filtered dropdown.
+// The dropdown is rendered via a React portal so it escapes any parent
+// overflow:hidden constraints (e.g. the group container in this modal).
+//
 // locked=true  → user should pick from list; warning shown if typed value not found
 // locked=false → any value accepted; list is suggestions only
 
 function ComboBox({ id, options, value, onChange, locked, placeholder }) {
-  const [query, setQuery] = useState(value || '');
-  const [open, setOpen]   = useState(false);
-  const wrapRef           = useRef(null);
+  const [query, setQuery]           = useState(value || '');
+  const [open, setOpen]             = useState(false);
+  const [dropPos, setDropPos]       = useState({ top: 0, left: 0, width: 0 });
+  const inputRef                    = useRef(null);
+  const wrapRef                     = useRef(null);
 
   // Keep local query in sync when parent resets the value
   useEffect(() => { setQuery(value || ''); }, [value]);
+
+  // Recompute dropdown position whenever it opens or the window scrolls/resizes
+  useEffect(() => {
+    if (!open) return;
+    function reposition() {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (rect) setDropPos({ top: rect.bottom + 2, left: rect.left, width: rect.width });
+    }
+    reposition();
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open]);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -353,13 +375,10 @@ function ComboBox({ id, options, value, onChange, locked, placeholder }) {
   }
 
   function handleBlur() {
-    // Delay so onMouseDown on an option fires first
+    // Delay so onMouseDown on a portal option fires first
     setTimeout(() => {
       if (!wrapRef.current?.contains(document.activeElement)) {
         setOpen(false);
-        // For locked fields: commit the value only if it matches (case-insensitive).
-        // If it doesn't match, keep the typed text but show the warning — eBay will
-        // validate at post time. Don't silently clear the user's input.
         if (locked && query) {
           const exact = options.find((o) => o.toLowerCase() === query.trim().toLowerCase());
           if (exact) { setQuery(exact); onChange(exact); }
@@ -368,9 +387,31 @@ function ComboBox({ id, options, value, onChange, locked, placeholder }) {
     }, 200);
   }
 
+  const dropdown = open && matches.length > 0 && createPortal(
+    <ul
+      className={styles.comboDropdown}
+      style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}
+      role="listbox"
+    >
+      {matches.map((opt) => (
+        <li
+          key={opt}
+          className={`${styles.comboOption} ${opt === value ? styles.comboOptionActive : ''}`}
+          role="option"
+          aria-selected={opt === value}
+          onMouseDown={(e) => { e.preventDefault(); select(opt); }}
+        >
+          {opt}
+        </li>
+      ))}
+    </ul>,
+    document.body
+  );
+
   return (
     <div ref={wrapRef} className={styles.comboWrap}>
       <input
+        ref={inputRef}
         id={id}
         type="text"
         className={`${styles.fieldInput} ${locked && query && !valueInList ? styles.fieldInputWarn : ''}`}
@@ -384,21 +425,7 @@ function ComboBox({ id, options, value, onChange, locked, placeholder }) {
         aria-expanded={open}
         aria-autocomplete="list"
       />
-      {open && matches.length > 0 && (
-        <ul className={styles.comboDropdown} role="listbox">
-          {matches.map((opt) => (
-            <li
-              key={opt}
-              className={`${styles.comboOption} ${opt === value ? styles.comboOptionActive : ''}`}
-              role="option"
-              aria-selected={opt === value}
-              onMouseDown={(e) => { e.preventDefault(); select(opt); }}
-            >
-              {opt}
-            </li>
-          ))}
-        </ul>
-      )}
+      {dropdown}
       {locked && query && !valueInList && (
         <p className={styles.comboWarn}>Not in eBay&apos;s list — may be rejected when posting</p>
       )}

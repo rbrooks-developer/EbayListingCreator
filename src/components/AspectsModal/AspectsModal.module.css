@@ -275,11 +275,9 @@
 }
 
 .comboDropdown {
-  position: absolute;
-  top: calc(100% + 2px);
-  left: 0;
-  right: 0;
-  z-index: 50;
+  /* position/top/left/width set inline by the portal */
+  position: fixed;
+  z-index: 9999;
   background: var(--bg-white);
   border: 1px solid var(--border);
   border-radius: 6px;

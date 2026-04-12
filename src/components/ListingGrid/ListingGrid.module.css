@@ -150,8 +150,11 @@
 
 /* Table */
 .tableWrapper {
-  overflow-x: auto;
-  padding: 0 0 0.5rem;
+  overflow: auto;                        /* both axes */
+  max-height: calc(100vh - 260px);       /* viewport-relative height */
+  min-height: 300px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 .table {
@@ -161,6 +164,9 @@
 }
 
 .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;                            /* above sticky body columns (z-index: 2) */
   padding: 0.65rem 0.75rem;
   text-align: left;
   font-weight: 600;
@@ -191,9 +197,9 @@
 .colStatus      { min-width: 130px; position: sticky; left: 0;     z-index: 2; background: var(--bg-white); }
 .colTitle       { min-width: 480px; position: sticky; left: 130px; z-index: 2; background: var(--bg-white); }
 
-/* Header cells of sticky columns use the header background */
+/* Sticky column + sticky header intersection — must beat both z-index:3 (header) and z-index:2 (column) */
 .table thead th.colStatus,
-.table thead th.colTitle { background: var(--bg-light); }
+.table thead th.colTitle { background: var(--bg-light); z-index: 4; }
 .colDescription { min-width: 200px; }
 .colQty         { width: 68px; }
 .colCondition   { width: 90px; }
