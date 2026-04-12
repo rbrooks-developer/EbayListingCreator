@@ -40,6 +40,8 @@ jobs:
           VITE_EBAY_RUNAME: ${{ secrets.VITE_EBAY_RUNAME }}
           VITE_EBAY_SANDBOX_CLIENT_ID: ${{ secrets.VITE_EBAY_SANDBOX_CLIENT_ID }}
           VITE_EBAY_SANDBOX_RUNAME: ${{ secrets.VITE_EBAY_SANDBOX_RUNAME }}
+          VITE_STRIPE_PRO_PRICE_ID: ${{ secrets.VITE_STRIPE_PRO_PRICE_ID }}
+          VITE_STRIPE_BUSINESS_PRICE_ID: ${{ secrets.VITE_STRIPE_BUSINESS_PRICE_ID }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

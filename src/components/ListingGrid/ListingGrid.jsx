@@ -230,14 +230,17 @@ export default function ListingGrid({
       const { listings: imported, errors } = await parseListingFile(file, categories, shippingServices);
       setImportErrors(errors);
       if (imported.length > 0) {
-        onChange([...listings, ...imported]);
+        const merged = [...listings, ...imported];
+        onChange(merged);
         setImportStatus(`Imported ${imported.length} listing${imported.length !== 1 ? 's' : ''} from "${file.name}".`);
         // Pre-fetch aspects for all imported categories so status shows immediately
         const categoryIds = imported.map((l) => l.categoryId).filter(Boolean);
         if (categoryIds.length) {
           await prewarmAspects(categoryIds);
-          // Trigger a re-render so the status dots and footer count update
-          onChange([...listingsRef.current]);
+          // Trigger a re-render so the status dots update — use captured merged
+          // array, not listingsRef.current, which may be stale when categories
+          // were already cached and prewarmAspects returned synchronously.
+          onChange([...merged]);
         }
       } else {
         setImportStatus('No listings found in file.');

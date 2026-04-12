@@ -188,8 +188,12 @@
 }
 
 /* Column widths */
-.colStatus      { min-width: 130px; }
-.colTitle       { min-width: 180px; }
+.colStatus      { min-width: 130px; position: sticky; left: 0;     z-index: 2; background: var(--bg-white); }
+.colTitle       { min-width: 480px; position: sticky; left: 130px; z-index: 2; background: var(--bg-white); }
+
+/* Header cells of sticky columns use the header background */
+.table thead th.colStatus,
+.table thead th.colTitle { background: var(--bg-light); }
 .colDescription { min-width: 200px; }
 .colQty         { width: 68px; }
 .colCondition   { width: 90px; }
