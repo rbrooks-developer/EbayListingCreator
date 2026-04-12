@@ -60,6 +60,18 @@ const HEADER_MAP = {
   'image':                'imageUrl',
   'images':               'imageUrl',
   'photo url':            'imageUrl',
+  // Trading card condition descriptors
+  'tc grader':            'tcGrader',
+  'grader':               'tcGrader',
+  'grading company':      'tcGrader',
+  'tc grade':             'tcGrade',
+  'grade':                'tcGrade',
+  'tc cert number':       'tcCertNumber',
+  'cert number':          'tcCertNumber',
+  'cert #':               'tcCertNumber',
+  'certification number': 'tcCertNumber',
+  'tc card condition':    'tcCardCondition',
+  'card condition':       'tcCardCondition',
 };
 
 const CONDITION_MAP = {
@@ -246,6 +258,10 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
     'Weight Pounds',
     'Weight Ounces',
     'Image URL',
+    'TC Grader',
+    'TC Grade',
+    'TC Cert Number',
+    'TC Card Condition',
   ];
 
   const rows = listings.map((l) => [
@@ -267,6 +283,10 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
     l.weightOz,
     // Export the first ready image URL if any
     l.images?.find((img) => img.ebayUrl)?.ebayUrl ?? '',
+    l.tcGrader ?? '',
+    l.tcGrade ?? '',
+    l.tcCertNumber ?? '',
+    l.tcCardCondition ?? '',
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -290,6 +310,10 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
     { wch: 14 }, // Weight Pounds
     { wch: 14 }, // Weight Ounces
     { wch: 50 }, // Image URL
+    { wch: 16 }, // TC Grader
+    { wch: 10 }, // TC Grade
+    { wch: 16 }, // TC Cert Number
+    { wch: 18 }, // TC Card Condition
   ];
 
   const wb = XLSX.utils.book_new();
@@ -328,5 +352,14 @@ export function createEmptyListing() {
     weightLbs:        '',
     weightOz:         '',
     images:           [],
+    // Trading card condition (populated by TradingCardModal or Excel import)
+    conditionId:         '',   // overrides CONDITION_MAP in worker when set (e.g. '2750', '4000')
+    conditionDescriptors: [],  // [{name: descriptorId, value: descriptorValueId}, …]
+    tcConditionType:     '',   // 'graded' | 'ungraded' | ''
+    tcGrader:            '',   // grading company name or value id
+    tcGrade:             '',   // grade value
+    tcCertNumber:        '',   // free-text cert number
+    tcCardCondition:     '',   // card condition value or value id
+    tcConditionLabel:    '',   // display string e.g. "Graded · PSA · 9.5"
   };
 }

@@ -400,7 +400,7 @@ async function handleCreateListing(body, env) {
   const price       = isAuction ? (listing.auctionStartPrice || '0.99') : (listing.price || '0.00');
   const duration    = isAuction ? (DURATION_MAP[String(listing.auctionDays)] ?? 'Days_7') : 'GTC';
   const listingType = isAuction ? 'Chinese' : 'FixedPriceItem';
-  const conditionId = CONDITION_MAP[listing.condition] ?? '1000';
+  const conditionId = listing.conditionId || CONDITION_MAP[listing.condition] || '1000';
 
   // ── Business Policies ─────────────────────────────────────────────────────
   const accountBase = sandbox
@@ -443,6 +443,14 @@ async function handleCreateListing(body, env) {
         );
       }).join('\n      ')}
     </ItemSpecifics>`;
+
+  // ── Condition Descriptors (trading cards: grader, grade, cert#, card condition) ──
+  const conditionDescriptorsXml = (listing.conditionDescriptors ?? []).length === 0 ? '' : `
+    <ConditionDescriptors>
+      ${listing.conditionDescriptors.map((cd) =>
+        `<ConditionDescriptor><Name>${xmlEscape(String(cd.name))}</Name><Value>${xmlEscape(String(cd.value))}</Value></ConditionDescriptor>`
+      ).join('\n      ')}
+    </ConditionDescriptors>`;
 
   // ── Shipping ──────────────────────────────────────────────────────────────
   const hasPackageInfo = !!(listing.length && listing.width && listing.height && (listing.weightLbs || listing.weightOz));
@@ -531,6 +539,7 @@ async function handleCreateListing(body, env) {
     </PrimaryCategory>
     <StartPrice>${price}</StartPrice>
     <ConditionID>${conditionId}</ConditionID>
+    ${conditionDescriptorsXml}
     <Country>${site.country}</Country>
     <Currency>${site.currency}</Currency>
     <Location>${xmlEscape(defaultLocation || site.country)}</Location>

@@ -276,6 +276,21 @@ export async function createListing(accessToken, listing, marketplaceId, sandbox
   return workerPost('listing', { token: accessToken, listing, marketplaceId, sandbox, defaultLocation, defaultPostalCode, supabaseToken });
 }
 
+// ── Condition policies ────────────────────────────────────────────────────────
+
+/**
+ * Returns condition policies for a category, including condition descriptors
+ * (trading card grader/grade/cert fields).
+ * Response shape: { itemConditions: [{ conditionId, conditionDescription, conditionDescriptors: [...] }] }
+ */
+export async function fetchConditionPolicies(accessToken, categoryId, marketplaceId = 'EBAY_US', sandbox = false) {
+  const baseUrl = sandbox ? SANDBOX_METADATA_URL : EBAY_METADATA_URL;
+  return ebayGet(
+    `${baseUrl}/marketplace/${marketplaceId}/get_item_condition_policies?category_id=${categoryId}`,
+    accessToken
+  );
+}
+
 // ── Category aspects ──────────────────────────────────────────────────────────
 
 export async function fetchAspectsForCategory(accessToken, categoryTreeId, categoryId, sandbox = false) {

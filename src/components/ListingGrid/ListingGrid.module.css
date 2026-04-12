@@ -237,6 +237,19 @@
   background: rgba(54, 101, 243, 0.04);
 }
 
+.tcBtnFilled {
+  border-color: var(--success);
+  color: var(--success);
+  background: var(--success-bg);
+  border-style: solid;
+}
+
+.tcBtnFilled:hover {
+  border-color: var(--success);
+  color: var(--success);
+  background: var(--success-bg);
+}
+
 /* Cell inputs */
 .cellInput {
   width: 100%;

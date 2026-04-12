@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { createEmptyListing, parseListingFile, exportListingsToExcel } from '../../utils/excelUtils.js';
-import { createListing, fetchAspectsForCategory } from '../../services/ebayApi.js';
+import { createListing, fetchAspectsForCategory, fetchConditionPolicies } from '../../services/ebayApi.js';
 import { applyRules } from '../../utils/rulesEngine.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
 import UsageBanner from '../UsageBanner/UsageBanner.jsx';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
+import TradingCardModal from '../TradingCardModal/TradingCardModal.jsx';
 import ImageManagerModal from '../ImageManagerModal/ImageManagerModal.jsx';
 import ShippingPicker from '../ShippingPicker/ShippingPicker.jsx';
 import styles from './ListingGrid.module.css';
@@ -78,8 +79,12 @@ export default function ListingGrid({
   const [importErrors, setImportErrors] = useState([]);
   const [importStatus, setImportStatus] = useState('');
   const [aspectsListingId, setAspectsListingId] = useState(null);
+  const [tcModalListingId, setTcModalListingId] = useState(null);
   const [imageModalListingId, setImageModalListingId] = useState(null);
   const [isPostingAll, setIsPostingAll] = useState(false);
+  // Set of categoryIds that have condition descriptors (trading card categories)
+  const [tcCategoryIds, setTcCategoryIds] = useState(new Set());
+  const policiesCache = useRef(new Map());
   const fileInputRef = useRef(null);
   const listingsRef = useRef(listings);
   useEffect(() => { listingsRef.current = listings; }, [listings]);
@@ -135,10 +140,36 @@ export default function ListingGrid({
         l.id !== id ? l : { ...l, categoryId, categoryName, aspects: {} }
       )
     );
+    // Discover whether this is a trading-card category in the background
+    if (categoryId) checkConditionPolicies(categoryId);
   }
 
   function updateAspects(id, aspects) {
     onChange(listings.map((l) => (l.id !== id ? l : { ...l, aspects })));
+  }
+
+  function updateTradingCard(id, patch) {
+    onChange(listings.map((l) => (l.id !== id ? l : { ...l, ...patch })));
+  }
+
+  /**
+   * Fetch condition policies for a category, cache the result, and mark the
+   * category as a trading card category if it has condition descriptors.
+   */
+  async function checkConditionPolicies(categoryId) {
+    if (!categoryId || !accessToken || policiesCache.current.has(categoryId)) return;
+    try {
+      const data = await fetchConditionPolicies(accessToken, categoryId, marketplace, sandbox);
+      policiesCache.current.set(categoryId, data);
+      const hasDescriptors = (data.itemConditions ?? []).some(
+        (c) => c.conditionDescriptors?.length > 0
+      );
+      if (hasDescriptors) {
+        setTcCategoryIds((prev) => new Set([...prev, categoryId]));
+      }
+    } catch {
+      // not a TC category or API error — silently ignore
+    }
   }
 
   async function handlePost(id) {
@@ -237,6 +268,8 @@ export default function ListingGrid({
         const categoryIds = imported.map((l) => l.categoryId).filter(Boolean);
         if (categoryIds.length) {
           await prewarmAspects(categoryIds);
+          // Check condition policies (TC detection) in background — no await needed
+          categoryIds.forEach((id) => checkConditionPolicies(id));
           // Trigger a re-render so the status dots update — use captured merged
           // array, not listingsRef.current, which may be stale when categories
           // were already cached and prewarmAspects returned synchronously.
@@ -257,6 +290,7 @@ export default function ListingGrid({
 
   const hasListings = listings.length > 0;
   const activeListingForModal = listings.find((l) => l.id === aspectsListingId) ?? null;
+  const tcModalListing = listings.find((l) => l.id === tcModalListingId) ?? null;
   const hasCategories = categories.length > 0;
 
   return (
@@ -373,10 +407,12 @@ export default function ListingGrid({
                     shippingServices={shippingServices}
                     fulfillmentPolicies={fulfillmentPolicies}
                     aspectsCache={aspectsCache}
+                    tcCategoryIds={tcCategoryIds}
                     onUpdate={updateField}
                     onUpdateCategory={updateCategory}
                     onRemove={removeRow}
                     onOpenAspects={setAspectsListingId}
+                    onOpenTcModal={setTcModalListingId}
                     onPost={handlePost}
                     onOpenImages={() => setImageModalListingId(listing.id)}
                     hasCategories={hasCategories}
@@ -416,6 +452,19 @@ export default function ListingGrid({
           aspectsCache={aspectsCache}
           onSave={(aspects) => updateAspects(activeListingForModal.id, aspects)}
           onClose={() => setAspectsListingId(null)}
+        />
+      )}
+
+      {/* ── Trading card condition modal ── */}
+      {tcModalListing && (
+        <TradingCardModal
+          listing={tcModalListing}
+          accessToken={accessToken}
+          marketplaceId={marketplace}
+          sandbox={sandbox}
+          policiesCache={policiesCache}
+          onSave={(patch) => updateTradingCard(tcModalListing.id, patch)}
+          onClose={() => setTcModalListingId(null)}
         />
       )}
 
@@ -476,11 +525,12 @@ function ErrorMsg({ message }) {
 
 // ── ListingRow ────────────────────────────────────────────────────────────────
 
-function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onPost, onOpenImages, hasCategories, canPost }) {
+function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, tcCategoryIds, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onOpenTcModal, onPost, onOpenImages, hasCategories, canPost }) {
   const isAuction = listing.listingType === 'Auction';
   const aspectsStatus = getAspectsStatus(listing, aspectsCache.current);
   const statusCfg = STATUS_CONFIG[aspectsStatus];
   const { postStatus, listingId, statusError } = listing;
+  const isTcCategory = listing.categoryId && tcCategoryIds.has(listing.categoryId);
 
   function field(name, value) { onUpdate(listing.id, name, value); }
 
@@ -601,6 +651,17 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
         >
           {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
+        {isTcCategory && (
+          <button
+            type="button"
+            className={`${styles.imagesBtn} ${listing.tcConditionLabel ? styles.tcBtnFilled : ''}`}
+            style={{ marginTop: '0.3rem' }}
+            onClick={() => onOpenTcModal(listing.id)}
+            title="Set trading card grade / condition"
+          >
+            {listing.tcConditionLabel || '+ Card Grade'}
+          </button>
+        )}
       </td>
 
       {/* Listing Type */}
