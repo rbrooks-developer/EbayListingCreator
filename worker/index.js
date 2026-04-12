@@ -447,9 +447,13 @@ async function handleCreateListing(body, env) {
   // ── Condition Descriptors (trading cards: grader, grade, cert#, card condition) ──
   const conditionDescriptorsXml = (listing.conditionDescriptors ?? []).length === 0 ? '' : `
     <ConditionDescriptors>
-      ${listing.conditionDescriptors.map((cd) =>
-        `<ConditionDescriptor><Name>${xmlEscape(String(cd.name))}</Name><Value>${xmlEscape(String(cd.value))}</Value></ConditionDescriptor>`
-      ).join('\n      ')}
+      ${listing.conditionDescriptors.map((cd) => {
+        // Descriptor 27503 = Certification Number — uses AdditionalInfo (free text), not Value
+        const inner = cd.name === '27503'
+          ? `<AdditionalInfo>${xmlEscape(String(cd.value))}</AdditionalInfo>`
+          : `<Value>${xmlEscape(String(cd.value))}</Value>`;
+        return `<ConditionDescriptor><Name>${xmlEscape(String(cd.name))}</Name>${inner}</ConditionDescriptor>`;
+      }).join('\n      ')}
     </ConditionDescriptors>`;
 
   // ── Shipping ──────────────────────────────────────────────────────────────

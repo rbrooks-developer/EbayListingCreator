@@ -22,6 +22,7 @@ import styles from './TradingCardModal.module.css';
  */
 export default function TradingCardModal({
   listing,
+  initialType = '',      // type pre-selected from the condition dropdown
   accessToken,
   marketplaceId = 'EBAY_US',
   sandbox,
@@ -33,8 +34,8 @@ export default function TradingCardModal({
   const [loadError, setLoadError]   = useState('');
   const [policies, setPolicies]     = useState(null); // raw API response
 
-  // Form state — initialise from existing listing values
-  const [condType, setCondType]       = useState(listing.tcConditionType || '');
+  // initialType takes priority (user just selected from dropdown) over saved value
+  const [condType, setCondType]       = useState(initialType || listing.tcConditionType || '');
   const [grader, setGrader]           = useState(listing.tcGrader || '');
   const [grade, setGrade]             = useState(listing.tcGrade || '');
   const [certNumber, setCertNumber]   = useState(listing.tcCertNumber || '');

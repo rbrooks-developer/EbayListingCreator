@@ -79,7 +79,8 @@ export default function ListingGrid({
   const [importErrors, setImportErrors] = useState([]);
   const [importStatus, setImportStatus] = useState('');
   const [aspectsListingId, setAspectsListingId] = useState(null);
-  const [tcModalListingId, setTcModalListingId] = useState(null);
+  const [tcModalListingId, setTcModalListingId]     = useState(null);
+  const [tcModalInitialType, setTcModalInitialType] = useState('');
   const [imageModalListingId, setImageModalListingId] = useState(null);
   const [isPostingAll, setIsPostingAll] = useState(false);
   // Set of categoryIds that have condition descriptors (trading card categories)
@@ -150,6 +151,12 @@ export default function ListingGrid({
 
   function updateTradingCard(id, patch) {
     onChange(listings.map((l) => (l.id !== id ? l : { ...l, ...patch })));
+  }
+
+  /** Open the TradingCardModal, optionally pre-selecting a condition type */
+  function openTcModal(id, type = '') {
+    setTcModalInitialType(type);
+    setTcModalListingId(id);
   }
 
   /**
@@ -412,7 +419,7 @@ export default function ListingGrid({
                     onUpdateCategory={updateCategory}
                     onRemove={removeRow}
                     onOpenAspects={setAspectsListingId}
-                    onOpenTcModal={setTcModalListingId}
+                    onOpenTcModal={openTcModal}
                     onPost={handlePost}
                     onOpenImages={() => setImageModalListingId(listing.id)}
                     hasCategories={hasCategories}
@@ -459,12 +466,13 @@ export default function ListingGrid({
       {tcModalListing && (
         <TradingCardModal
           listing={tcModalListing}
+          initialType={tcModalInitialType}
           accessToken={accessToken}
           marketplaceId={marketplace}
           sandbox={sandbox}
           policiesCache={policiesCache}
           onSave={(patch) => updateTradingCard(tcModalListing.id, patch)}
-          onClose={() => setTcModalListingId(null)}
+          onClose={() => { setTcModalListingId(null); setTcModalInitialType(''); }}
         />
       )}
 
@@ -643,24 +651,53 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
 
       {/* Condition */}
       <td className={styles.colCondition}>
-        <select
-          className={styles.cellSelect}
-          value={listing.condition}
-          onChange={(e) => field('condition', e.target.value)}
-          aria-label="Condition"
-        >
-          {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        {isTcCategory && (
-          <button
-            type="button"
-            className={`${styles.imagesBtn} ${listing.tcConditionLabel ? styles.tcBtnFilled : ''}`}
-            style={{ marginTop: '0.3rem' }}
-            onClick={() => onOpenTcModal(listing.id)}
-            title="Set trading card grade / condition"
+        {isTcCategory ? (
+          <>
+            {/* Trading card categories: Graded / Ungraded instead of New / Used */}
+            <select
+              className={styles.cellSelect}
+              value={listing.tcConditionType || ''}
+              onChange={(e) => {
+                const type = e.target.value;
+                if (type) onOpenTcModal(listing.id, type);
+              }}
+              aria-label="Card condition type"
+            >
+              <option value="">— Select type —</option>
+              <option value="graded">Graded</option>
+              <option value="ungraded">Ungraded</option>
+            </select>
+            {listing.tcConditionLabel ? (
+              <button
+                type="button"
+                className={`${styles.imagesBtn} ${styles.tcBtnFilled}`}
+                style={{ marginTop: '0.3rem' }}
+                onClick={() => onOpenTcModal(listing.id, listing.tcConditionType)}
+                title="Edit card grade / condition details"
+              >
+                {listing.tcConditionLabel}
+              </button>
+            ) : listing.tcConditionType ? (
+              <button
+                type="button"
+                className={styles.imagesBtn}
+                style={{ marginTop: '0.3rem' }}
+                onClick={() => onOpenTcModal(listing.id, listing.tcConditionType)}
+                title="Add grade / condition details"
+              >
+                + Add details
+              </button>
+            ) : null}
+          </>
+        ) : (
+          <select
+            className={styles.cellSelect}
+            value={listing.condition}
+            onChange={(e) => field('condition', e.target.value)}
+            aria-label="Condition"
           >
-            {listing.tcConditionLabel || '+ Card Grade'}
-          </button>
+            {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
         )}
       </td>
 
