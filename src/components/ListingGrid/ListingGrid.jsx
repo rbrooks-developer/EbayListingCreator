@@ -153,6 +153,30 @@ export default function ListingGrid({
     onChange(listings.map((l) => (l.id !== id ? l : { ...l, ...patch })));
   }
 
+  /**
+   * Set the TC condition type immediately when the user picks Graded/Ungraded
+   * from the dropdown.  This ensures conditionId (2750 or 4000) is always on
+   * the listing — even if the detail modal is cancelled — so the worker never
+   * falls back to the invalid conditionId 1000 for TC categories.
+   */
+  function setTcConditionType(id, type) {
+    onChange(listings.map((l) => {
+      if (l.id !== id) return l;
+      return {
+        ...l,
+        tcConditionType: type,
+        conditionId:     type === 'graded' ? '2750' : '4000',
+        // Clear stale label / descriptors when switching type
+        tcConditionLabel:    '',
+        conditionDescriptors: [],
+        tcGrader:     '',
+        tcGrade:      '',
+        tcCertNumber: '',
+        tcCardCondition: '',
+      };
+    }));
+  }
+
   /** Open the TradingCardModal, optionally pre-selecting a condition type */
   function openTcModal(id, type = '') {
     setTcModalInitialType(type);
@@ -419,6 +443,7 @@ export default function ListingGrid({
                     onUpdateCategory={updateCategory}
                     onRemove={removeRow}
                     onOpenAspects={setAspectsListingId}
+                    onSetTcType={setTcConditionType}
                     onOpenTcModal={openTcModal}
                     onPost={handlePost}
                     onOpenImages={() => setImageModalListingId(listing.id)}
@@ -533,7 +558,7 @@ function ErrorMsg({ message }) {
 
 // ── ListingRow ────────────────────────────────────────────────────────────────
 
-function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, tcCategoryIds, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onOpenTcModal, onPost, onOpenImages, hasCategories, canPost }) {
+function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, tcCategoryIds, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onSetTcType, onOpenTcModal, onPost, onOpenImages, hasCategories, canPost }) {
   const isAuction = listing.listingType === 'Auction';
   const aspectsStatus = getAspectsStatus(listing, aspectsCache.current);
   const statusCfg = STATUS_CONFIG[aspectsStatus];
@@ -568,7 +593,11 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
           </div>
         )}
         {postStatus === 'new' && (() => {
-          const reason = !canPost ? 'Connect to eBay (Step 1)' : !listing.title ? 'Title required' : !listing.categoryId ? 'Category required' : null;
+          const reason = !canPost ? 'Connect to eBay (Step 1)'
+            : !listing.title ? 'Title required'
+            : !listing.categoryId ? 'Category required'
+            : (isTcCategory && !listing.tcConditionType) ? 'Select Graded or Ungraded'
+            : null;
           return (
             <>
               <button
@@ -659,7 +688,12 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
               value={listing.tcConditionType || ''}
               onChange={(e) => {
                 const type = e.target.value;
-                if (type) onOpenTcModal(listing.id, type);
+                if (type) {
+                  // Immediately stamp conditionId (2750 or 4000) onto the listing
+                  // so posting never falls back to the invalid conditionId 1000.
+                  onSetTcType(listing.id, type);
+                  onOpenTcModal(listing.id, type);
+                }
               }}
               aria-label="Card condition type"
             >
