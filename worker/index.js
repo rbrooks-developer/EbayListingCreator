@@ -8,6 +8,7 @@
  *   POST /listing           — create eBay listing (checks usage limits)
  *   POST /upload-image      — upload image to eBay EPS
  *   POST /user-location     — fetch user location from eBay GetUser
+ *   POST /contact           — contact form email (verifies Turnstile, sends via Gmail SMTP)
  *   POST /billing/usage     — return current tier + usage for the caller
  *   POST /billing/checkout  — create Stripe Checkout Session
  *   POST /billing/portal    — create Stripe Customer Portal session
@@ -19,10 +20,15 @@
  *   SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET
  *   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
  *   STRIPE_PRO_PRICE_ID, STRIPE_BUSINESS_PRICE_ID
+ *   GMAIL_USER             — Gmail address used to send contact emails
+ *   GMAIL_APP_PASSWORD     — Gmail App Password (not your Google account password)
+ *   TURNSTILE_SECRET_KEY   — Cloudflare Turnstile secret key
  *
  * Vars (wrangler.toml [vars]):
  *   ALLOWED_ORIGIN, SUPABASE_URL
  */
+
+import { connect } from 'cloudflare:sockets';
 
 const EBAY_TOKEN_URL         = 'https://api.ebay.com/identity/v1/oauth2/token';
 const EBAY_SANDBOX_TOKEN_URL = 'https://api.sandbox.ebay.com/identity/v1/oauth2/token';
@@ -109,6 +115,7 @@ async function handle(request, env) {
   if (path.endsWith('/listing'))          return handleCreateListing(body, env);
   if (path.endsWith('/upload-image'))     return handleUploadImage(body, env);
   if (path.endsWith('/user-location'))    return handleUserLocation(body, env);
+  if (path.endsWith('/contact'))          return handleContact(body, env);
   if (path.endsWith('/billing/usage'))    return handleBillingUsage(body, env);
   if (path.endsWith('/billing/checkout')) return handleBillingCheckout(body, env);
   if (path.endsWith('/billing/portal'))   return handleBillingPortal(body, env);
@@ -944,6 +951,171 @@ async function handleStripeWebhook(request, env) {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+// ── /contact ──────────────────────────────────────────────────────────────────
+
+const CONTACT_ADDRESSES = {
+  question:   'info@createmylistings.com',
+  suggestion: 'suggestions@createmylistings.com',
+};
+
+async function handleContact({ type, name, email, subject, message, captchaToken }, env) {
+  // Validate inputs
+  if (!CONTACT_ADDRESSES[type])  return err('Invalid contact type', 400, env);
+  if (!message?.trim())          return err('Message is required', 400, env);
+  if (!captchaToken)             return err('CAPTCHA token missing', 400, env);
+
+  if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) {
+    return err('Email delivery is not configured', 503, env);
+  }
+  if (!env.TURNSTILE_SECRET_KEY) {
+    return err('CAPTCHA verification is not configured', 503, env);
+  }
+
+  // Verify Cloudflare Turnstile token before doing anything else
+  const captchaOk = await verifyTurnstile(captchaToken, env.TURNSTILE_SECRET_KEY);
+  if (!captchaOk) return err('CAPTCHA verification failed — please try again', 403, env);
+
+  const to          = CONTACT_ADDRESSES[type];
+  const subjectLine = subject?.trim() ||
+    `${type === 'question' ? 'Question' : 'Suggestion'} from ${name?.trim() || 'a user'}`;
+
+  const textBody = [
+    `Name:    ${name?.trim()  || '(not provided)'}`,
+    `Email:   ${email?.trim() || '(not provided)'}`,
+    `Type:    ${type}`,
+    ``,
+    message.trim(),
+  ].join('\n');
+
+  try {
+    await sendGmailSmtp(env, {
+      to,
+      subject:    subjectLine,
+      textBody,
+      replyTo:    email?.trim() || null,
+      senderName: 'eBay Listing Creator',
+    });
+    return ok({ sent: true }, env);
+  } catch (e) {
+    console.error('SMTP error:', e.message);
+    return err('Failed to send message — please try again later', 500, env);
+  }
+}
+
+// ── Cloudflare Turnstile verification ─────────────────────────────────────────
+
+async function verifyTurnstile(token, secretKey) {
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `secret=${encodeURIComponent(secretKey)}&response=${encodeURIComponent(token)}`,
+    });
+    const data = await res.json();
+    return data.success === true;
+  } catch {
+    return false;
+  }
+}
+
+// ── Gmail SMTP (port 465 — implicit TLS) ──────────────────────────────────────
+
+async function sendGmailSmtp(env, { to, subject, textBody, replyTo, senderName }) {
+  const socket = connect(
+    { hostname: 'smtp.gmail.com', port: 465 },
+    { secureTransport: 'on' }
+  );
+
+  const dec    = new TextDecoder();
+  const enc    = new TextEncoder();
+  const reader = socket.readable.getReader();
+  const writer = socket.writable.getWriter();
+  const buf    = { text: '' };
+
+  // Read and return the numeric code from the next complete SMTP response.
+  // Handles multi-line responses (250-... / 250 ...) and partial TCP reads.
+  async function readSmtp() {
+    while (true) {
+      const lines = buf.text.split('\r\n');
+      // Check all but the last element (which may be an incomplete line)
+      for (let i = 0; i < lines.length - 1; i++) {
+        const line = lines[i];
+        if (line.length >= 4 && /^\d{3} /.test(line)) {
+          buf.text = lines.slice(i + 1).join('\r\n');
+          return parseInt(line.slice(0, 3), 10);
+        }
+      }
+      const { value, done } = await reader.read();
+      if (done) throw new Error('SMTP: connection closed unexpectedly');
+      buf.text += dec.decode(value);
+    }
+  }
+
+  async function cmd(text) {
+    await writer.write(enc.encode(text + '\r\n'));
+    return readSmtp();
+  }
+
+  // Encode a JS string (UTF-8) to base64
+  function toB64(str) {
+    const bytes = enc.encode(str);
+    let binary  = '';
+    for (const b of bytes) binary += String.fromCharCode(b);
+    return btoa(binary);
+  }
+
+  // Wrap base64 string into 76-char lines (RFC 2045)
+  function wrapB64(b64) {
+    const lines = [];
+    for (let i = 0; i < b64.length; i += 76) lines.push(b64.slice(i, i + 76));
+    return lines;
+  }
+
+  // ── SMTP conversation ────────────────────────────────────────────────────
+  let code = await readSmtp();
+  if (code !== 220) throw new Error(`Unexpected greeting: ${code}`);
+
+  code = await cmd('EHLO createmylistings.com');
+  if (code !== 250) throw new Error(`EHLO failed: ${code}`);
+
+  // AUTH PLAIN: base64("\0user\0password")
+  const authCreds = btoa('\x00' + env.GMAIL_USER + '\x00' + env.GMAIL_APP_PASSWORD);
+  code = await cmd(`AUTH PLAIN ${authCreds}`);
+  if (code !== 235) throw new Error(`AUTH PLAIN failed (check GMAIL_USER / GMAIL_APP_PASSWORD): ${code}`);
+
+  code = await cmd(`MAIL FROM:<${env.GMAIL_USER}>`);
+  if (code !== 250) throw new Error(`MAIL FROM failed: ${code}`);
+
+  code = await cmd(`RCPT TO:<${to}>`);
+  if (code !== 250) throw new Error(`RCPT TO failed: ${code}`);
+
+  code = await cmd('DATA');
+  if (code !== 354) throw new Error(`DATA failed: ${code}`);
+
+  // Build RFC 2822 message (base64 body so UTF-8 content is safe)
+  const msgLines = [
+    `Date: ${new Date().toUTCString()}`,
+    `From: ${senderName} <${env.GMAIL_USER}>`,
+    `To: ${to}`,
+    ...(replyTo ? [`Reply-To: ${replyTo}`] : []),
+    `Subject: =?UTF-8?B?${toB64(subject)}?=`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/plain; charset=UTF-8`,
+    `Content-Transfer-Encoding: base64`,
+    ``,
+    ...wrapB64(toB64(textBody)),
+  ];
+
+  // Terminate DATA with CRLF.CRLF
+  await writer.write(enc.encode(msgLines.join('\r\n') + '\r\n.\r\n'));
+  code = await readSmtp();
+  if (code !== 250) throw new Error(`Message rejected by Gmail: ${code}`);
+
+  await cmd('QUIT');
+  reader.releaseLock();
+  writer.releaseLock();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

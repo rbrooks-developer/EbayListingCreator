@@ -206,6 +206,34 @@
   line-height: 1.5;
 }
 
+/* ── CAPTCHA widget ──────────────────────────────────────────────────────── */
+
+.captcha {
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* ── Feedback messages ───────────────────────────────────────────────────── */
+
+.successMsg {
+  padding: 0.65rem 1rem;
+  background: var(--success-bg);
+  border: 1px solid #a5d6a7;
+  border-radius: var(--radius-sm);
+  color: var(--success);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.errorMsg {
+  padding: 0.65rem 1rem;
+  background: var(--error-bg);
+  border: 1px solid #ef9a9a;
+  border-radius: var(--radius-sm);
+  color: var(--error);
+  font-size: 0.875rem;
+}
+
 /* ── Form footer ─────────────────────────────────────────────────────────── */
 
 .formFooter {
@@ -256,3 +284,17 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+.spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  vertical-align: middle;
+  margin-right: 0.35rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

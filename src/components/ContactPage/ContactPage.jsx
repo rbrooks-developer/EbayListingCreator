@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './ContactPage.module.css';
+
+const WORKER_URL   = (import.meta.env.VITE_TOKEN_WORKER_URL ?? '').replace(/\/$/, '');
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? '';
 
 const SUGGESTION_PROMPTS = [
   { icon: '✨', text: 'A new column or field you wish the listing grid had' },
@@ -10,101 +13,195 @@ const SUGGESTION_PROMPTS = [
   { icon: '⚡', text: 'Speed or workflow improvements for bulk listing' },
 ];
 
-function ContactForm({ to, emailAddress, buttonLabel, placeholder }) {
+// Load Turnstile script once for the whole page
+function useTurnstileScript() {
+  const [ready, setReady] = useState(typeof window !== 'undefined' && !!window.turnstile);
+
+  useEffect(() => {
+    if (window.turnstile) { setReady(true); return; }
+    if (document.getElementById('cf-turnstile-script')) return;
+
+    const script = document.createElement('script');
+    script.id  = 'cf-turnstile-script';
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.onload = () => setReady(true);
+    document.head.appendChild(script);
+  }, []);
+
+  return ready;
+}
+
+function TurnstileWidget({ onToken, onExpire, formId }) {
+  const containerRef = useRef(null);
+  const widgetId     = useRef(null);
+  const scriptReady  = useTurnstileScript();
+
+  useEffect(() => {
+    if (!scriptReady || !containerRef.current || !TURNSTILE_SITE_KEY) return;
+    if (widgetId.current !== null) return; // already rendered
+
+    widgetId.current = window.turnstile.render(containerRef.current, {
+      sitekey:           TURNSTILE_SITE_KEY,
+      callback:          onToken,
+      'expired-callback': onExpire,
+      'error-callback':  onExpire,
+    });
+
+    return () => {
+      if (widgetId.current !== null) {
+        window.turnstile?.remove(widgetId.current);
+        widgetId.current = null;
+      }
+    };
+  }, [scriptReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!TURNSTILE_SITE_KEY) return null;
+
+  return <div ref={containerRef} className={styles.captcha} />;
+}
+
+function ContactForm({ type, emailAddress, buttonLabel, placeholder }) {
   const [name,    setName]    = useState('');
   const [email,   setEmail]   = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [sent,    setSent]    = useState(false);
+  const [token,   setToken]   = useState('');
+  const [status,  setStatus]  = useState('idle'); // idle | sending | success | error
+  const [errMsg,  setErrMsg]  = useState('');
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || status === 'sending') return;
+    if (TURNSTILE_SITE_KEY && !token) return; // captcha not completed
 
-    const subjectLine = subject.trim() || `${to} from ${name.trim() || 'a user'}`;
-    const body = [
-      name.trim()  ? `Name: ${name.trim()}`   : '',
-      email.trim() ? `Email: ${email.trim()}` : '',
-      '',
-      message.trim(),
-    ].filter((line, i) => i >= 2 || line !== '').join('\n');
+    setStatus('sending');
+    setErrMsg('');
 
-    window.location.href =
-      `mailto:${emailAddress}` +
-      `?subject=${encodeURIComponent(subjectLine)}` +
-      `&body=${encodeURIComponent(body)}`;
+    try {
+      const res = await fetch(`${WORKER_URL}/contact`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          name:         name.trim(),
+          email:        email.trim(),
+          subject:      subject.trim(),
+          message:      message.trim(),
+          captchaToken: token,
+        }),
+      });
 
-    setSent(true);
-    setTimeout(() => setSent(false), 4000);
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.error || `Server error (${res.status})`);
+      }
+
+      setStatus('success');
+      setName(''); setEmail(''); setSubject(''); setMessage(''); setToken('');
+      // Reset Turnstile widget so it's ready for another submission
+      window.turnstile?.reset();
+
+    } catch (e) {
+      setErrMsg(e.message);
+      setStatus('error');
+      window.turnstile?.reset();
+      setToken('');
+    }
   }
+
+  const canSubmit = message.trim() && (!TURNSTILE_SITE_KEY || token) && status !== 'sending';
 
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
       <div className={styles.fieldRow}>
         <div className={styles.field}>
-          <label className={styles.label} htmlFor={`${to}-name`}>Your name</label>
+          <label className={styles.label} htmlFor={`${type}-name`}>Your name</label>
           <input
-            id={`${to}-name`}
+            id={`${type}-name`}
             type="text"
             className={styles.input}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Jane Smith"
             autoComplete="name"
+            disabled={status === 'sending'}
           />
         </div>
         <div className={styles.field}>
-          <label className={styles.label} htmlFor={`${to}-email`}>Your email</label>
+          <label className={styles.label} htmlFor={`${type}-email`}>Your email</label>
           <input
-            id={`${to}-email`}
+            id={`${type}-email`}
             type="email"
             className={styles.input}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="jane@example.com"
             autoComplete="email"
+            disabled={status === 'sending'}
           />
         </div>
       </div>
 
       <div className={styles.field}>
-        <label className={styles.label} htmlFor={`${to}-subject`}>Subject</label>
+        <label className={styles.label} htmlFor={`${type}-subject`}>Subject</label>
         <input
-          id={`${to}-subject`}
+          id={`${type}-subject`}
           type="text"
           className={styles.input}
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder="What's this about?"
+          disabled={status === 'sending'}
         />
       </div>
 
       <div className={styles.field}>
-        <label className={styles.label} htmlFor={`${to}-message`}>
+        <label className={styles.label} htmlFor={`${type}-message`}>
           {placeholder} <span className={styles.required}>*</span>
         </label>
         <textarea
-          id={`${to}-message`}
+          id={`${type}-message`}
           className={styles.textarea}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={5}
           required
           placeholder={`Write your ${placeholder.toLowerCase()} here…`}
+          disabled={status === 'sending'}
         />
       </div>
 
+      <TurnstileWidget
+        formId={type}
+        onToken={setToken}
+        onExpire={() => setToken('')}
+      />
+
+      {status === 'success' && (
+        <div className={styles.successMsg} role="status">
+          Message sent — we'll get back to you soon.
+        </div>
+      )}
+
+      {status === 'error' && (
+        <div className={styles.errorMsg} role="alert">
+          {errMsg || 'Something went wrong. Please try again.'}
+        </div>
+      )}
+
       <div className={styles.formFooter}>
         <p className={styles.emailNote}>
-          Opens your email client addressed to{' '}
-          <a href={`mailto:${emailAddress}`} className={styles.emailLink}>{emailAddress}</a>
+          Sent to{' '}
+          <a href={`mailto:${emailAddress}`} className={styles.emailLink}>
+            {emailAddress}
+          </a>
         </p>
-        <button
-          type="submit"
-          className={styles.submitBtn}
-          disabled={!message.trim()}
-        >
-          {sent ? '✓ Email client opened' : buttonLabel}
+        <button type="submit" className={styles.submitBtn} disabled={!canSubmit}>
+          {status === 'sending' ? (
+            <><span className={styles.spinner} aria-hidden="true" /> Sending…</>
+          ) : buttonLabel}
         </button>
       </div>
     </form>
@@ -116,7 +213,6 @@ export default function ContactPage() {
     <section className={styles.section} id="contact">
       <div className={styles.container}>
 
-        {/* ── Page header ── */}
         <div className={styles.pageHeader}>
           <h2 className={styles.pageTitle}>Contact Us</h2>
           <p className={styles.pageSubtitle}>
@@ -148,7 +244,7 @@ export default function ContactPage() {
             </div>
 
             <ContactForm
-              to="question"
+              type="question"
               emailAddress="info@createmylistings.com"
               buttonLabel="Send Question →"
               placeholder="Message"
@@ -177,7 +273,7 @@ export default function ContactPage() {
             </div>
 
             <ContactForm
-              to="suggestion"
+              type="suggestion"
               emailAddress="suggestions@createmylistings.com"
               buttonLabel="Send Suggestion →"
               placeholder="Suggestion"
