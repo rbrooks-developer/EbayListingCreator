@@ -456,7 +456,9 @@ async function handleCreateListing(body, env) {
     (k) => COUNTRY_KEYS.includes(k.toLowerCase())
   );
   if (!hasCountry) {
+    // Both names are used across eBay categories — send both to ensure one sticks
     aspects['Country/Region of Manufacture'] = 'United States';
+    aspects['Country of Manufacture'] = 'United States';
   }
 
   const aspectEntries = Object.entries(aspects);
