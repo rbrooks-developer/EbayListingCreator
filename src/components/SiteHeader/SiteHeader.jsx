@@ -27,6 +27,7 @@ export default function SiteHeader({ onSignInClick, onSignOut }) {
           <a href="#oauth">Connect to eBay</a>
           <a href="#listings">Listings</a>
           <a href="#faq">FAQ</a>
+          <a href="#contact">Contact</a>
         </nav>
 
         <div className={styles.authSlot}>

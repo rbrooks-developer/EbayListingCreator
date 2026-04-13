@@ -23,6 +23,7 @@ import { fetchRules } from './services/rulesService.js';
 import { supabase } from './services/authService.js';
 import RulesManager from './components/RulesManager/RulesManager.jsx';
 import FaqPage from './components/FaqPage/FaqPage.jsx';
+import ContactPage from './components/ContactPage/ContactPage.jsx';
 import CheckoutNotice from './components/CheckoutNotice/CheckoutNotice.jsx';
 
 function AppContent() {
@@ -217,6 +218,7 @@ function AppContent() {
         />
 
         <FaqPage />
+        <ContactPage />
       </main>
 
       <CheckoutNotice />
