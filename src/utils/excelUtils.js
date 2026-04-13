@@ -101,6 +101,33 @@ const LISTING_TYPE_MAP = {
 const VALID_AUCTION_DAYS = [3, 5, 7, 10];
 
 /**
+ * eBay's three trading card parent categories are not leaf nodes, so they
+ * never appear in the downloaded taxonomy array. Map common name aliases
+ * directly to their category IDs so imports work without the taxonomy lookup.
+ */
+const TC_CATEGORY_ALIASES = {
+  // 261328 — Sports Trading Cards
+  'sports trading cards':                      { categoryId: '261328', categoryName: 'Sports Trading Cards' },
+  'sports cards':                              { categoryId: '261328', categoryName: 'Sports Trading Cards' },
+  'trading cards - sports':                    { categoryId: '261328', categoryName: 'Sports Trading Cards' },
+  // 183050 — Non-Sport Trading Cards
+  'non-sport trading cards':                   { categoryId: '183050', categoryName: 'Non-Sport Trading Cards' },
+  'non sport trading cards':                   { categoryId: '183050', categoryName: 'Non-Sport Trading Cards' },
+  'non-sports trading cards':                  { categoryId: '183050', categoryName: 'Non-Sport Trading Cards' },
+  'nonsport trading cards':                    { categoryId: '183050', categoryName: 'Non-Sport Trading Cards' },
+  // 183454 — Collectible Card Games / MTG / Pokemon
+  'collectible card games/mtg':                { categoryId: '183454', categoryName: 'Collectible Card Games/MTG' },
+  'collectible card games & supplies':         { categoryId: '183454', categoryName: 'Collectible Card Games/MTG' },
+  'collectible card games and supplies':       { categoryId: '183454', categoryName: 'Collectible Card Games/MTG' },
+  'collectible card games':                    { categoryId: '183454', categoryName: 'Collectible Card Games/MTG' },
+  'ccg':                                       { categoryId: '183454', categoryName: 'Collectible Card Games/MTG' },
+  'mtg':                                       { categoryId: '183454', categoryName: 'Collectible Card Games/MTG' },
+  'magic the gathering':                       { categoryId: '183454', categoryName: 'Collectible Card Games/MTG' },
+  'pokemon':                                   { categoryId: '183454', categoryName: 'Collectible Card Games/MTG' },
+  'pokemon cards':                             { categoryId: '183454', categoryName: 'Collectible Card Games/MTG' },
+};
+
+/**
  * Parse an uploaded Excel or CSV file and return an array of listing objects.
  * @param {File} file
  * @param {object[]} categories        — [{ categoryId, categoryName, fullPath }]
@@ -185,7 +212,18 @@ export function parseListingFile(file, categories = [], shippingServices = []) {
           }
 
           // Resolve category name → categoryId
-          if (entry.categoryName && categories.length > 0) {
+          // Step 1: TC parent categories are never leaf nodes so they won't appear
+          // in the eBay taxonomy array — resolve them directly by known aliases.
+          if (entry.categoryName && !entry.categoryId) {
+            const tcAlias = TC_CATEGORY_ALIASES[entry.categoryName.toLowerCase().trim()];
+            if (tcAlias) {
+              entry.categoryId   = tcAlias.categoryId;
+              entry.categoryName = tcAlias.categoryName;
+            }
+          }
+
+          // Step 2: general lookup against the downloaded category tree
+          if (entry.categoryName && !entry.categoryId && categories.length > 0) {
             const normalize = (s) => s.toLowerCase().replace(/\s*>\s*/g, ' > ').trim();
             const nameLower = normalize(entry.categoryName);
             const match = categories.find(
