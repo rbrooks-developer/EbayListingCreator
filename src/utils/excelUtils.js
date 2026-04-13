@@ -1,4 +1,11 @@
 import * as XLSX from 'xlsx';
+import {
+  GRADER_OPTIONS,
+  GRADE_OPTIONS,
+  CARD_COND_OPTIONS,
+  resolveDescriptorId,
+  descriptorLabel,
+} from './tcDescriptors.js';
 
 /**
  * Column header aliases — maps spreadsheet header names to
@@ -6,72 +13,76 @@ import * as XLSX from 'xlsx';
  */
 const HEADER_MAP = {
   // Title
-  'title':                'title',
-  'listing title':        'title',
+  'title':                 'title',
+  'listing title':         'title',
   // Description
-  'description':          'description',
-  'desc':                 'description',
+  'description':           'description',
+  'desc':                  'description',
   // Category
-  'category':             'categoryName',
-  'category name':        'categoryName',
+  'category':              'categoryName',
+  'category name':         'categoryName',
   // Quantity
-  'quantity':             'quantity',
-  'qty':                  'quantity',
-  'quantity available':   'quantity',
+  'quantity':              'quantity',
+  'qty':                   'quantity',
+  'quantity available':    'quantity',
   // Condition
-  'condition':            'condition',
-  'item condition':       'condition',
+  'condition':             'condition',
+  'item condition':        'condition',
   // Listing type
-  'listing type':         'listingType',
-  'type':                 'listingType',
-  'format':               'listingType',
+  'listing type':          'listingType',
+  'type':                  'listingType',
+  'format':                'listingType',
   // Prices
-  'buy it now price':     'price',
-  'price':                'price',
-  'auction start price':  'auctionStartPrice',
-  'start price':          'auctionStartPrice',
-  'best offer price':     'bestOffer',
-  'best offer':           'bestOffer',
-  'best offer amount':    'bestOffer',
+  'buy it now price':      'price',
+  'price':                 'price',
+  'auction start price':   'auctionStartPrice',
+  'start price':           'auctionStartPrice',
+  'best offer price':      'bestOffer',
+  'best offer':            'bestOffer',
+  'best offer amount':     'bestOffer',
   // Auction
-  'auction days':         'auctionDays',
-  'auction length':       'auctionDays',
-  'duration':             'auctionDays',
+  'auction days':          'auctionDays',
+  'auction length':        'auctionDays',
+  'duration':              'auctionDays',
   // Shipping
-  'shipping method':      'shippingService',
-  'shipping service':     'shippingService',
-  'ship method':          'shippingService',
+  'shipping method':       'shippingService',
+  'shipping service':      'shippingService',
+  'ship method':           'shippingService',
   // Dimensions
-  'length':               'length',
-  'length (in)':          'length',
-  'width':                'width',
-  'width (in)':           'width',
-  'height':               'height',
-  'height (in)':          'height',
+  'length':                'length',
+  'length (in)':           'length',
+  'width':                 'width',
+  'width (in)':            'width',
+  'height':                'height',
+  'height (in)':           'height',
   // Weight
-  'weight pounds':        'weightLbs',
-  'lbs':                  'weightLbs',
-  'weight lbs':           'weightLbs',
-  'weight ounces':        'weightOz',
-  'oz':                   'weightOz',
-  'weight oz':            'weightOz',
+  'weight pounds':         'weightLbs',
+  'lbs':                   'weightLbs',
+  'weight lbs':            'weightLbs',
+  'weight ounces':         'weightOz',
+  'oz':                    'weightOz',
+  'weight oz':             'weightOz',
   // Images
-  'image url':            'imageUrl',
-  'image':                'imageUrl',
-  'images':               'imageUrl',
-  'photo url':            'imageUrl',
-  // Trading card condition descriptors
-  'tc grader':            'tcGrader',
-  'grader':               'tcGrader',
-  'grading company':      'tcGrader',
-  'tc grade':             'tcGrade',
-  'grade':                'tcGrade',
-  'tc cert number':       'tcCertNumber',
-  'cert number':          'tcCertNumber',
-  'cert #':               'tcCertNumber',
-  'certification number': 'tcCertNumber',
-  'tc card condition':    'tcCardCondition',
-  'card condition':       'tcCardCondition',
+  'image url':             'imageUrl',
+  'image':                 'imageUrl',
+  'images':                'imageUrl',
+  'photo url':             'imageUrl',
+  // Trading card — condition type
+  'tc condition type':     'tcConditionType',
+  'condition type':        'tcConditionType',
+  'graded/ungraded':       'tcConditionType',
+  // Trading card — condition descriptors
+  'tc grader':             'tcGrader',
+  'grader':                'tcGrader',
+  'grading company':       'tcGrader',
+  'tc grade':              'tcGrade',
+  'grade':                 'tcGrade',
+  'tc cert number':        'tcCertNumber',
+  'cert number':           'tcCertNumber',
+  'cert #':                'tcCertNumber',
+  'certification number':  'tcCertNumber',
+  'tc card condition':     'tcCardCondition',
+  'card condition':        'tcCardCondition',
 };
 
 const CONDITION_MAP = {
@@ -175,7 +186,6 @@ export function parseListingFile(file, categories = [], shippingServices = []) {
 
           // Resolve category name → categoryId
           if (entry.categoryName && categories.length > 0) {
-            // Normalize separators: both " > " and ">" should match
             const normalize = (s) => s.toLowerCase().replace(/\s*>\s*/g, ' > ').trim();
             const nameLower = normalize(entry.categoryName);
             const match = categories.find(
@@ -187,7 +197,6 @@ export function parseListingFile(file, categories = [], shippingServices = []) {
               entry.categoryId   = match.categoryId;
               entry.categoryName = match.categoryName;
             } else {
-              // Partial match fallback: last segment of the path
               const lastSegment = nameLower.split('>').pop().trim();
               const partial = categories.find(
                 (c) => normalize(c.categoryName) === lastSegment
@@ -209,7 +218,6 @@ export function parseListingFile(file, categories = [], shippingServices = []) {
               (s) =>
                 normalize(s.serviceName) === svcLower ||
                 normalize(s.serviceCode) === svcLower ||
-                // Partial: input is a substring of the service name or vice versa
                 normalize(s.serviceName).includes(svcLower) ||
                 svcLower.includes(normalize(s.serviceName))
             );
@@ -217,6 +225,48 @@ export function parseListingFile(file, categories = [], shippingServices = []) {
               entry.shippingService = match.serviceCode;
             } else {
               errors.push(`Row ${lineNum}: Shipping method "${entry.shippingService}" not found — select it manually.`);
+            }
+          }
+
+          // ── Resolve trading card condition descriptors ──────────────────────
+          if (entry.tcConditionType) {
+            const tcType = entry.tcConditionType.toLowerCase().trim();
+
+            if (tcType === 'graded') {
+              entry.tcConditionType = 'graded';
+              entry.conditionId     = '2750';
+
+              entry.tcGrader       = resolveDescriptorId(entry.tcGrader, GRADER_OPTIONS);
+              entry.tcGrade        = resolveDescriptorId(entry.tcGrade,  GRADE_OPTIONS);
+              // Cert number is free text — preserve as-is, enforce 30-char max
+              if (entry.tcCertNumber.length > 30) entry.tcCertNumber = entry.tcCertNumber.slice(0, 30);
+
+              const descriptors = [];
+              if (entry.tcGrader)     descriptors.push({ name: '27501', value: entry.tcGrader });
+              if (entry.tcGrade)      descriptors.push({ name: '27502', value: entry.tcGrade });
+              if (entry.tcCertNumber) descriptors.push({ name: '27503', value: entry.tcCertNumber });
+              entry.conditionDescriptors = descriptors;
+
+              entry.tcConditionLabel = [
+                'Graded',
+                descriptorLabel(entry.tcGrader, GRADER_OPTIONS),
+                descriptorLabel(entry.tcGrade,  GRADE_OPTIONS),
+              ].filter(Boolean).join(' · ');
+
+            } else if (tcType === 'ungraded') {
+              entry.tcConditionType = 'ungraded';
+              entry.conditionId     = '4000';
+
+              entry.tcCardCondition = resolveDescriptorId(entry.tcCardCondition, CARD_COND_OPTIONS);
+
+              const descriptors = [];
+              if (entry.tcCardCondition) descriptors.push({ name: '40001', value: entry.tcCardCondition });
+              entry.conditionDescriptors = descriptors;
+
+              entry.tcConditionLabel = [
+                'Ungraded',
+                descriptorLabel(entry.tcCardCondition, CARD_COND_OPTIONS),
+              ].filter(Boolean).join(' · ');
             }
           }
 
@@ -236,6 +286,8 @@ export function parseListingFile(file, categories = [], shippingServices = []) {
 
 /**
  * Export an array of listing objects to an Excel file and trigger download.
+ * TC descriptor IDs are converted back to human-readable labels so the file
+ * can be read and re-imported without changes.
  * @param {object[]} listings
  * @param {string} filename
  */
@@ -258,10 +310,11 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
     'Weight Pounds',
     'Weight Ounces',
     'Image URL',
-    'TC Grader',
-    'TC Grade',
-    'TC Cert Number',
-    'TC Card Condition',
+    'TC Condition Type',
+    'Grading Company',
+    'Grade',
+    'Cert Number',
+    'Card Condition',
   ];
 
   const rows = listings.map((l) => [
@@ -281,17 +334,18 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
     l.height,
     l.weightLbs,
     l.weightOz,
-    // Export the first ready image URL if any
     l.images?.find((img) => img.ebayUrl)?.ebayUrl ?? '',
-    l.tcGrader ?? '',
-    l.tcGrade ?? '',
+    // TC fields — export as human-readable labels, not numeric IDs
+    l.tcConditionType === 'graded'   ? 'Graded'
+      : l.tcConditionType === 'ungraded' ? 'Ungraded' : '',
+    descriptorLabel(l.tcGrader       ?? '', GRADER_OPTIONS),
+    descriptorLabel(l.tcGrade        ?? '', GRADE_OPTIONS),
     l.tcCertNumber ?? '',
-    l.tcCardCondition ?? '',
+    descriptorLabel(l.tcCardCondition ?? '', CARD_COND_OPTIONS),
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
 
-  // Set column widths
   ws['!cols'] = [
     { wch: 50 }, // Title
     { wch: 40 }, // Description
@@ -310,15 +364,206 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
     { wch: 14 }, // Weight Pounds
     { wch: 14 }, // Weight Ounces
     { wch: 50 }, // Image URL
-    { wch: 16 }, // TC Grader
-    { wch: 10 }, // TC Grade
-    { wch: 16 }, // TC Cert Number
-    { wch: 18 }, // TC Card Condition
+    { wch: 16 }, // TC Condition Type
+    { wch: 16 }, // Grading Company
+    { wch: 10 }, // Grade
+    { wch: 16 }, // Cert Number
+    { wch: 28 }, // Card Condition
   ];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Listings');
   XLSX.writeFile(wb, filename);
+}
+
+/**
+ * Generate and download a trading-card-specific Excel template.
+ * Sheet 1 ("Listings"): column headers + 2 example rows (one graded, one ungraded).
+ * Sheet 2 ("Reference"): all valid values for TC Condition Type, Grading Company,
+ *   Grade, and Card Condition.
+ */
+export function generateTCTemplate() {
+  // ── Sheet 1: Listings ───────────────────────────────────────────────────────
+  const listingsHeaders = [
+    'Title', 'Description', 'Category', 'Qty',
+    'Listing Type', 'Buy It Now Price',
+    'Auction Start Price', 'Auction Days',
+    'Shipping Method',
+    'Length (in)', 'Width (in)', 'Height (in)',
+    'Weight Pounds', 'Weight Ounces',
+    'Image URL',
+    'TC Condition Type',
+    'Grading Company',
+    'Grade',
+    'Cert Number',
+    'Card Condition',
+  ];
+
+  const exampleGraded = [
+    '1998 PSA 9.5 Michael Jordan #1 Topps Chrome',
+    'PSA graded 9.5 Michael Jordan Topps Chrome 1998. Near mint condition.',
+    'Sports Trading Cards',
+    '1',
+    'Buy It Now',
+    '299.99',
+    '', '',
+    'USPS Priority Mail',
+    '4', '3', '0.25',
+    '0', '2',
+    '',
+    'Graded',
+    'PSA',
+    '9.5',
+    '12345678',
+    '',
+  ];
+
+  const exampleUngraded = [
+    '1999 Charizard Base Set Unlimited Holo',
+    'Ungraded Charizard from the 1999 Base Set Unlimited printing. Lightly played.',
+    'Collectible Card Games/MTG',
+    '1',
+    'Buy It Now',
+    '149.00',
+    '', '',
+    'USPS First Class',
+    '4', '3', '0.1',
+    '0', '1',
+    '',
+    'Ungraded',
+    '',
+    '',
+    '',
+    'Lightly Played (Excellent)',
+  ];
+
+  const wsListings = XLSX.utils.aoa_to_sheet([listingsHeaders, exampleGraded, exampleUngraded]);
+
+  wsListings['!cols'] = [
+    { wch: 50 }, // Title
+    { wch: 50 }, // Description
+    { wch: 30 }, // Category
+    { wch: 6  }, // Qty
+    { wch: 14 }, // Listing Type
+    { wch: 16 }, // Buy It Now Price
+    { wch: 18 }, // Auction Start Price
+    { wch: 13 }, // Auction Days
+    { wch: 24 }, // Shipping Method
+    { wch: 10 }, // Length
+    { wch: 10 }, // Width
+    { wch: 10 }, // Height
+    { wch: 14 }, // Weight Pounds
+    { wch: 14 }, // Weight Ounces
+    { wch: 50 }, // Image URL
+    { wch: 18 }, // TC Condition Type
+    { wch: 16 }, // Grading Company
+    { wch: 10 }, // Grade
+    { wch: 16 }, // Cert Number
+    { wch: 30 }, // Card Condition
+  ];
+
+  // ── Sheet 2: Reference ─────────────────────────────────────────────────────
+  const maxRows = Math.max(GRADER_OPTIONS.length, GRADE_OPTIONS.length, CARD_COND_OPTIONS.length) + 1;
+
+  const refRows = [];
+
+  // Header row
+  refRows.push([
+    'TC Condition Type',
+    '',
+    'Grading Company',
+    '',
+    'Grade',
+    '',
+    'Card Condition (Ungraded only)',
+  ]);
+
+  // Note row
+  refRows.push([
+    'Graded',
+    '',
+    '(use for graded cards)',
+    '',
+    '(use for graded cards)',
+    '',
+    '(use for ungraded cards)',
+  ]);
+  refRows.push([
+    'Ungraded',
+    '', '', '', '', '', '',
+  ]);
+
+  // Blank separator
+  refRows.push(['', '', '', '', '', '', '']);
+
+  // Column sub-headers
+  refRows.push(['', '', 'Abbreviation', 'Full Name', 'Value', '', 'Condition']);
+
+  // Data rows — graders, grades, card conditions side by side
+  const maxLen = Math.max(GRADER_OPTIONS.length, GRADE_OPTIONS.length, CARD_COND_OPTIONS.length);
+  for (let i = 0; i < maxLen; i++) {
+    const grader   = GRADER_OPTIONS[i];
+    const grade    = GRADE_OPTIONS[i];
+    const cardCond = CARD_COND_OPTIONS[i];
+
+    refRows.push([
+      '',
+      '',
+      grader   ? grader.value   : '',
+      grader   ? graderFullName(grader.value) : '',
+      grade    ? grade.value    : '',
+      '',
+      cardCond ? cardCond.value : '',
+    ]);
+  }
+
+  const wsRef = XLSX.utils.aoa_to_sheet(refRows);
+
+  wsRef['!cols'] = [
+    { wch: 20 }, // TC Condition Type
+    { wch: 2  }, // spacer
+    { wch: 12 }, // Grading Company abbrev
+    { wch: 40 }, // Grading Company full name
+    { wch: 10 }, // Grade
+    { wch: 2  }, // spacer
+    { wch: 32 }, // Card Condition
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsListings, 'Listings');
+  XLSX.utils.book_append_sheet(wb, wsRef, 'Reference');
+  XLSX.writeFile(wb, 'trading_cards_template.xlsx');
+}
+
+/** Map grader abbreviation to its full name for the reference sheet. */
+function graderFullName(abbrev) {
+  const names = {
+    PSA:   'Professional Sports Authenticator',
+    BCCG:  'Beckett Collectors Club Grading',
+    BVG:   'Beckett Vintage Grading',
+    BGS:   'Beckett Grading Services',
+    CSG:   'Certified Sports Guaranty',
+    CGC:   'Certified Guaranty Company',
+    SGC:   'Sportscard Guaranty Corporation',
+    KSA:   'K Sportscard Authentication',
+    GMA:   'Gem Mint Authentication',
+    HGA:   'Hybrid Grading Approach',
+    ISA:   'International Sports Authentication',
+    PCA:   'Professional Card Authenticator',
+    GSG:   'Gold Standard Grading',
+    PGS:   'Platin Grading Service',
+    MNT:   'MNT Grading',
+    TAG:   'Technical Authentication & Grading',
+    Rare:  'Rare Edition',
+    RCG:   'Revolution Card Grading',
+    PCG:   'Premier Card Grading',
+    Ace:   'Ace Grading',
+    CGA:   'Card Grading Australia',
+    TCG:   'Trading Card Grading',
+    ARK:   'ARK Grading',
+    Other: 'Other',
+  };
+  return names[abbrev] ?? abbrev;
 }
 
 /**
@@ -353,13 +598,13 @@ export function createEmptyListing() {
     weightOz:         '',
     images:           [],
     // Trading card condition (populated by TradingCardModal or Excel import)
-    conditionId:         '',   // overrides CONDITION_MAP in worker when set (e.g. '2750', '4000')
-    conditionDescriptors: [],  // [{name: descriptorId, value: descriptorValueId}, …]
-    tcConditionType:     '',   // 'graded' | 'ungraded' | ''
-    tcGrader:            '',   // grading company name or value id
-    tcGrade:             '',   // grade value
-    tcCertNumber:        '',   // free-text cert number
-    tcCardCondition:     '',   // card condition value or value id
-    tcConditionLabel:    '',   // display string e.g. "Graded · PSA · 9.5"
+    conditionId:          '',   // overrides CONDITION_MAP in worker when set (e.g. '2750', '4000')
+    conditionDescriptors: [],   // [{ name: descriptorId, value: descriptorValueId }, …]
+    tcConditionType:      '',   // 'graded' | 'ungraded' | ''
+    tcGrader:             '',   // eBay numeric valueId (e.g. '275010' for PSA)
+    tcGrade:              '',   // eBay numeric valueId (e.g. '275022' for grade 9)
+    tcCertNumber:         '',   // free-text cert number (max 30 chars)
+    tcCardCondition:      '',   // eBay numeric valueId (e.g. '400010')
+    tcConditionLabel:     '',   // display string e.g. "Graded · PSA · 9.5"
   };
 }

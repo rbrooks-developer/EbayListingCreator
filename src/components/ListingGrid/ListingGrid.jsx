@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { createEmptyListing, parseListingFile, exportListingsToExcel } from '../../utils/excelUtils.js';
+import { createEmptyListing, parseListingFile, exportListingsToExcel, generateTCTemplate } from '../../utils/excelUtils.js';
 import { createListing, fetchAspectsForCategory, fetchConditionPolicies } from '../../services/ebayApi.js';
 import { applyRules } from '../../utils/rulesEngine.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
@@ -345,7 +345,11 @@ export default function ListingGrid({
           <p className={styles.subtitle}>
             Import listings from an Excel / CSV file or add rows manually. Download the{' '}
             <button className={styles.linkBtn} onClick={downloadTemplate}>
-              template spreadsheet
+              standard template
+            </button>{' '}
+            or the{' '}
+            <button className={styles.linkBtn} onClick={generateTCTemplate}>
+              trading card template
             </button>{' '}
             to see the expected column format.
             {!hasCategories && (

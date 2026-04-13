@@ -1,86 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import {
+  GRADER_OPTIONS,
+  GRADE_OPTIONS,
+  CARD_COND_OPTIONS,
+  resolveDescriptorId,
+  descriptorLabel,
+} from '../../utils/tcDescriptors.js';
 import styles from './TradingCardModal.module.css';
-
-/**
- * Hardcoded from eBay's "Condition Descriptor IDs for Trading Cards" docs.
- * The Metadata API returns human-readable labels as its valueIds, but the
- * Trading API XML requires these static numeric IDs — so we hardcode them.
- */
-const GRADER_OPTIONS = [
-  { valueId: '275010',  value: 'PSA'   },
-  { valueId: '275011',  value: 'BCCG'  },
-  { valueId: '275012',  value: 'BVG'   },
-  { valueId: '275013',  value: 'BGS'   },
-  { valueId: '275014',  value: 'CSG'   },
-  { valueId: '275015',  value: 'CGC'   },
-  { valueId: '275016',  value: 'SGC'   },
-  { valueId: '275017',  value: 'KSA'   },
-  { valueId: '275018',  value: 'GMA'   },
-  { valueId: '275019',  value: 'HGA'   },
-  { valueId: '2750110', value: 'ISA'   },
-  { valueId: '2750111', value: 'PCA'   },
-  { valueId: '2750112', value: 'GSG'   },
-  { valueId: '2750113', value: 'PGS'   },
-  { valueId: '2750114', value: 'MNT'   },
-  { valueId: '2750115', value: 'TAG'   },
-  { valueId: '2750116', value: 'Rare'  },
-  { valueId: '2750117', value: 'RCG'   },
-  { valueId: '2750118', value: 'PCG'   },
-  { valueId: '2750119', value: 'Ace'   },
-  { valueId: '2750120', value: 'CGA'   },
-  { valueId: '2750121', value: 'TCG'   },
-  { valueId: '2750122', value: 'ARK'   },
-  { valueId: '2750123', value: 'Other' },
-];
-
-const GRADE_OPTIONS = [
-  { valueId: '275020',  value: '10'                    },
-  { valueId: '275021',  value: '9.5'                   },
-  { valueId: '275022',  value: '9'                     },
-  { valueId: '275023',  value: '8.5'                   },
-  { valueId: '275024',  value: '8'                     },
-  { valueId: '275025',  value: '7.5'                   },
-  { valueId: '275026',  value: '7'                     },
-  { valueId: '275027',  value: '6.5'                   },
-  { valueId: '275028',  value: '6'                     },
-  { valueId: '275029',  value: '5.5'                   },
-  { valueId: '2750210', value: '5'                     },
-  { valueId: '2750211', value: '4.5'                   },
-  { valueId: '2750212', value: '4'                     },
-  { valueId: '2750213', value: '3.5'                   },
-  { valueId: '2750214', value: '3'                     },
-  { valueId: '2750215', value: '2.5'                   },
-  { valueId: '2750216', value: '2'                     },
-  { valueId: '2750217', value: '1.5'                   },
-  { valueId: '2750218', value: '1'                     },
-  { valueId: '2750219', value: 'Authentic'             },
-  { valueId: '2750220', value: 'Authentic Altered'     },
-  { valueId: '2750221', value: 'Authentic - Trimmed'   },
-  { valueId: '2750222', value: 'Authentic - Coloured'  },
-];
-
-const CARD_COND_OPTIONS = [
-  { valueId: '400010', value: 'Near Mint or Better'            },
-  { valueId: '400011', value: 'Excellent'                      },
-  { valueId: '400012', value: 'Very Good'                      },
-  { valueId: '400013', value: 'Poor'                           },
-  { valueId: '400015', value: 'Lightly Played (Excellent)'     },
-  { valueId: '400016', value: 'Moderately Played (Very Good)'  },
-  { valueId: '400017', value: 'Heavily Played (Poor)'          },
-];
-
-/**
- * Resolve a stored value to its valueId.
- * Handles two cases:
- *   - Already a numeric ID (e.g. "275022") → returned as-is
- *   - A human-readable label (e.g. "9") → looked up by display value
- */
-function resolveId(stored, options) {
-  if (!stored) return '';
-  if (options.find((o) => o.valueId === stored)) return stored;
-  const byLabel = options.find((o) => o.value === stored);
-  return byLabel ? byLabel.valueId : '';
-}
 
 /**
  * TradingCardModal
@@ -106,10 +32,10 @@ export default function TradingCardModal({
   onClose,
 }) {
   const [condType, setCondType]      = useState(initialType || listing.tcConditionType || '');
-  const [grader, setGrader]          = useState(() => resolveId(listing.tcGrader      || '', GRADER_OPTIONS));
-  const [grade, setGrade]            = useState(() => resolveId(listing.tcGrade       || '', GRADE_OPTIONS));
+  const [grader, setGrader]          = useState(() => resolveDescriptorId(listing.tcGrader      || '', GRADER_OPTIONS));
+  const [grade, setGrade]            = useState(() => resolveDescriptorId(listing.tcGrade       || '', GRADE_OPTIONS));
   const [certNumber, setCertNumber]  = useState(listing.tcCertNumber || '');
-  const [cardCondition, setCardCond] = useState(() => resolveId(listing.tcCardCondition || '', CARD_COND_OPTIONS));
+  const [cardCondition, setCardCond] = useState(() => resolveDescriptorId(listing.tcCardCondition || '', CARD_COND_OPTIONS));
 
   const overlayRef = useRef(null);
 
@@ -128,12 +54,12 @@ export default function TradingCardModal({
 
   function buildLabel() {
     if (condType === 'graded') {
-      const graderName = GRADER_OPTIONS.find((v) => v.valueId === grader)?.value ?? grader;
-      const gradeName  = GRADE_OPTIONS.find((v) => v.valueId === grade)?.value   ?? grade;
+      const graderName = descriptorLabel(grader, GRADER_OPTIONS);
+      const gradeName  = descriptorLabel(grade,  GRADE_OPTIONS);
       return ['Graded', graderName, gradeName].filter(Boolean).join(' · ');
     }
     if (condType === 'ungraded') {
-      const condName = CARD_COND_OPTIONS.find((v) => v.valueId === cardCondition)?.value ?? cardCondition;
+      const condName = descriptorLabel(cardCondition, CARD_COND_OPTIONS);
       return ['Ungraded', condName].filter(Boolean).join(' · ');
     }
     return '';
