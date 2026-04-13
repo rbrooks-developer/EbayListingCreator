@@ -433,11 +433,11 @@ export default function ListingGrid({
                   <th className={styles.colBestOffer}>Best Offer ($)</th>
                   <th className={styles.colShipPolicy}>Ship Policy</th>
                   <th className={styles.colShipping}>Shipping Method</th>
-                  <th className={styles.colDimension}>L (in)</th>
-                  <th className={styles.colDimension}>W (in)</th>
-                  <th className={styles.colDimension}>H (in)</th>
-                  <th className={styles.colDimension}>Lbs</th>
-                  <th className={styles.colDimension}>Oz</th>
+                  <th className={styles.colDimension}>Length (in)</th>
+                  <th className={styles.colDimension}>Width (in)</th>
+                  <th className={styles.colDimension}>Height (in)</th>
+                  <th className={styles.colWeight}>Pounds</th>
+                  <th className={styles.colWeight}>Ounces</th>
                   <th className={styles.colImages}>Images</th>
                   <th className={styles.colActions} aria-label="Actions" />
                 </tr>

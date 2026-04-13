@@ -213,8 +213,8 @@
 .colLocation    { min-width: 130px; }
 .colShipPolicy  { min-width: 180px; }
 .colShipping    { min-width: 200px; }
-.colDimension   { width: 72px; }
-.colWeight      { width: 90px; }
+.colDimension   { width: 90px; }
+.colWeight      { width: 80px; }
 .colImages      { width: 100px; }
 .colActions     { width: 44px; text-align: center; }
 
