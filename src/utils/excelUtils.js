@@ -285,6 +285,10 @@ export function parseListingFile(file, categories = [], shippingServices = []) {
               if (entry.tcCertNumber) descriptors.push({ name: '27503', value: entry.tcCertNumber });
               entry.conditionDescriptors = descriptors;
 
+              // Warn if grader or grade couldn't be resolved — eBay requires both.
+              if (!entry.tcGrader) errors.push(`Row ${lineNum}: Grading Company not recognised — open the Condition cell to set it manually.`);
+              if (!entry.tcGrade)  errors.push(`Row ${lineNum}: Grade not recognised — open the Condition cell to set it manually.`);
+
               entry.tcConditionLabel = [
                 'Graded',
                 descriptorLabel(entry.tcGrader, GRADER_OPTIONS),
@@ -439,8 +443,8 @@ export function generateTCTemplate() {
   ];
 
   const exampleGraded = [
-    '1998 PSA 9.5 Michael Jordan #1 Topps Chrome',
-    'PSA graded 9.5 Michael Jordan Topps Chrome 1998. Near mint condition.',
+    '1998 BGS 9.5 Michael Jordan #1 Topps Chrome',
+    'BGS graded 9.5 Michael Jordan Topps Chrome 1998. Gem Mint condition.',
     'Sports Trading Cards',
     '1',
     'Buy It Now',
@@ -451,7 +455,7 @@ export function generateTCTemplate() {
     '0', '2',
     '',
     'Graded',
-    'PSA',
+    'BGS',
     '9.5',
     '12345678',
     '',

@@ -136,7 +136,7 @@ const FAQS = [
       },
       {
         q: 'What values can I use for Grading Company and Grade in the spreadsheet?',
-        a: 'Use the abbreviations shown on the Reference sheet of the trading card template: PSA, BCCG, BVG, BGS, CSG, CGC, SGC, KSA, GMA, HGA, ISA, PCA, GSG, PGS, MNT, TAG, Rare, RCG, PCG, Ace, CGA, TCG, ARK, or Other. For grades, use the numeric value as displayed: 10, 9.5, 9, 8.5, … 1, or Authentic.',
+        a: 'Use the abbreviations shown on the Reference sheet of the trading card template: PSA, BCCG, BVG, BGS, CSG, CGC, SGC, KSA, GMA, HGA, ISA, PCA, GSG, PGS, MNT, TAG, Rare, RCG, PCG, Ace, CGA, TCG, ARK, or Other. For grades, use the numeric value as displayed: 10, 9.5, 9, 8.5, … 1, or Authentic. Note: eBay validates that the grade is compatible with the grading company — for example, PSA uses whole-number grades (1–10) while BGS/Beckett uses half-point grades. Using a half-point grade like 9.5 with PSA may be rejected by eBay.',
       },
       {
         q: 'Which card conditions are valid for ungraded cards?',

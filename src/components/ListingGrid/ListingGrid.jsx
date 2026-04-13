@@ -703,12 +703,15 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
               value={listing.tcConditionType || ''}
               onChange={(e) => {
                 const type = e.target.value;
-                if (type) {
-                  // Immediately stamp conditionId (2750 or 4000) onto the listing
-                  // so posting never falls back to the invalid conditionId 1000.
+                if (!type) return;
+                // If the type is CHANGING, clear stale data first then open modal.
+                // If the user re-selects the same type (e.g. accidentally clicks
+                // "Graded" on an already-graded imported row), just open the modal
+                // to let them review/edit without wiping the existing descriptors.
+                if (type !== listing.tcConditionType) {
                   onSetTcType(listing.id, type);
-                  onOpenTcModal(listing.id, type);
                 }
+                onOpenTcModal(listing.id, type);
               }}
               aria-label="Card condition type"
             >
