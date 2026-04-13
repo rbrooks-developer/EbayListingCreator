@@ -112,6 +112,39 @@ const FAQS = [
     ],
   },
   {
+    category: 'Trading Cards',
+    items: [
+      {
+        q: 'Which categories require special condition handling?',
+        a: 'Three eBay categories use a dedicated graded/ungraded condition system instead of the standard New/Used dropdown: Sports Trading Cards (261328), Non-Sport Trading Cards (183050), and Collectible Card Games/MTG (183454). Listings in these categories must have a condition type set before they can be posted.',
+      },
+      {
+        q: 'How do I set the condition for a trading card listing?',
+        a: 'In the Condition column for a trading card category, select "Graded" or "Ungraded" from the dropdown. A modal will open where you can fill in the details. For graded cards: choose the grading company (PSA, BGS, CGC, etc.), the numeric grade (10, 9.5, 9, …), and an optional certification number. For ungraded cards: choose the card condition (Near Mint or Better, Excellent, etc.).',
+      },
+      {
+        q: 'Why can\'t I use the regular New/Used condition for trading cards?',
+        a: 'eBay requires a specific condition ID for these categories — 2750 for Graded and 4000 for Ungraded — and rejects listings that use generic condition values. The Condition column automatically switches to the graded/ungraded picker when a trading card category is selected.',
+      },
+      {
+        q: 'What is the Cert Number field?',
+        a: 'The certification number (or cert number) is the unique identifier printed on a graded card\'s label by the grading company. It is optional but recommended as it lets buyers verify the grade on the grader\'s website. Maximum 30 characters.',
+      },
+      {
+        q: 'How do I import trading card listings from a spreadsheet?',
+        a: 'Use the trading card template — click the "trading card template" link in the Listings section header. Fill in the TC Condition Type column with "Graded" or "Ungraded", then fill in either the grading company + grade + cert number (for graded) or the card condition (for ungraded). Use the values shown on the Reference sheet. The import resolves all labels to the correct eBay IDs automatically, so you can post without needing to open the condition modal.',
+      },
+      {
+        q: 'What values can I use for Grading Company and Grade in the spreadsheet?',
+        a: 'Use the abbreviations shown on the Reference sheet of the trading card template: PSA, BCCG, BVG, BGS, CSG, CGC, SGC, KSA, GMA, HGA, ISA, PCA, GSG, PGS, MNT, TAG, Rare, RCG, PCG, Ace, CGA, TCG, ARK, or Other. For grades, use the numeric value as displayed: 10, 9.5, 9, 8.5, … 1, or Authentic.',
+      },
+      {
+        q: 'Which card conditions are valid for ungraded cards?',
+        a: 'Near Mint or Better is valid for all three trading card categories. Sports and Non-Sport categories also accept Excellent, Very Good, and Poor. Collectible Card Games/MTG uses Lightly Played (Excellent), Moderately Played (Very Good), and Heavily Played (Poor) instead.',
+      },
+    ],
+  },
+  {
     category: 'Import & Export',
     items: [
       {
@@ -120,11 +153,11 @@ const FAQS = [
       },
       {
         q: 'Where can I get the import template?',
-        a: 'Click the "template spreadsheet" link in the Listings section header. It downloads an Excel file with all supported columns pre-labelled and sample data in the first row.',
+        a: 'Click the "standard template" link in the Listings section header for a general-purpose template, or click "trading card template" for a pre-configured template with trading card columns, example rows, and a Reference sheet showing all valid values.',
       },
       {
         q: 'What columns does the import support?',
-        a: 'Title, Description, Category, Qty, Condition, Listing Type, Buy It Now Price, Auction Start Price, Auction Days, Best Offer Price, Shipping Method, Length, Width, Height, Weight Pounds, Weight Ounces, and Image URL. Category and Shipping Method are matched by name automatically if you are connected to eBay.',
+        a: 'Title, Description, Category, Qty, Condition, Listing Type, Buy It Now Price, Auction Start Price, Auction Days, Best Offer Price, Shipping Method, Length, Width, Height, Weight Pounds, Weight Ounces, Image URL. For trading cards: TC Condition Type, Grading Company, Grade, Cert Number, and Card Condition. Category and Shipping Method are matched by name automatically if you are connected to eBay.',
       },
       {
         q: 'What happens if the category in my spreadsheet doesn\'t match?',
@@ -132,7 +165,7 @@ const FAQS = [
       },
       {
         q: 'Can I export my listings back to Excel?',
-        a: 'Yes. Click "Export Excel" in the toolbar. The exported file uses the same column format as the import template, so it can be re-imported later.',
+        a: 'Yes. Click "Export Excel" in the toolbar. The exported file uses the same column format as the import template, with trading card fields exported as human-readable labels (PSA, 9.5, etc.) so the file is easy to read and can be re-imported without changes.',
       },
     ],
   },
