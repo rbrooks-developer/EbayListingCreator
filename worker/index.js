@@ -446,8 +446,21 @@ async function handleCreateListing(body, env) {
   const useBusinessPolicies = !!(fulfillmentPolicyId || returnPolicy || paymentPolicy);
 
   // ── Item Specifics ────────────────────────────────────────────────────────
-  const aspectEntries = Object.entries(listing.aspects ?? {});
-  const itemSpecificsXml = aspectEntries.length === 0 ? '' : `
+  // Always include Country/Region of Manufacture so eBay never auto-detects
+  // a wrong country from the listing title (e.g. "Jordan" → Jordan).
+  // The user's own value wins if they set it via Item Specifics; otherwise
+  // we default to United States.
+  const aspects = { ...listing.aspects };
+  const COUNTRY_KEYS = ['country/region of manufacture', 'country of manufacture', 'country of origin'];
+  const hasCountry = Object.keys(aspects).some(
+    (k) => COUNTRY_KEYS.includes(k.toLowerCase())
+  );
+  if (!hasCountry) {
+    aspects['Country/Region of Manufacture'] = 'United States';
+  }
+
+  const aspectEntries = Object.entries(aspects);
+  const itemSpecificsXml = `
     <ItemSpecifics>
       ${aspectEntries.flatMap(([name, value]) => {
         const vals = Array.isArray(value) ? value : [value];
