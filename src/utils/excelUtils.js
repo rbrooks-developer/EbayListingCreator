@@ -388,6 +388,7 @@ export function generateTCTemplate() {
     'Title', 'Description', 'Category', 'Qty',
     'Listing Type', 'Buy It Now Price',
     'Auction Start Price', 'Auction Days',
+    'Best Offer Price',
     'Shipping Method',
     'Length (in)', 'Width (in)', 'Height (in)',
     'Weight Pounds', 'Weight Ounces',
@@ -406,7 +407,7 @@ export function generateTCTemplate() {
     '1',
     'Buy It Now',
     '299.99',
-    '', '',
+    '', '', '',
     'USPS Priority Mail',
     '4', '3', '0.25',
     '0', '2',
@@ -425,7 +426,7 @@ export function generateTCTemplate() {
     '1',
     'Buy It Now',
     '149.00',
-    '', '',
+    '', '', '',
     'USPS First Class',
     '4', '3', '0.1',
     '0', '1',
@@ -448,6 +449,7 @@ export function generateTCTemplate() {
     { wch: 16 }, // Buy It Now Price
     { wch: 18 }, // Auction Start Price
     { wch: 13 }, // Auction Days
+    { wch: 16 }, // Best Offer Price
     { wch: 24 }, // Shipping Method
     { wch: 10 }, // Length
     { wch: 10 }, // Width
