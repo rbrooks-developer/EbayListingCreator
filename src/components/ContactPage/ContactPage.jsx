@@ -13,22 +13,31 @@ const SUGGESTION_PROMPTS = [
   { icon: '⚡', text: 'Speed or workflow improvements for bulk listing' },
 ];
 
-// Load Turnstile script once for the whole page
-function useTurnstileScript() {
-  const [ready, setReady] = useState(typeof window !== 'undefined' && !!window.turnstile);
+// Module-level promise so all TurnstileWidget instances share one script load.
+// The second widget was returning early when it found the <script> tag already
+// in the DOM and never setting ready=true.
+let _turnstilePromise = null;
 
+function loadTurnstileScript() {
+  if (_turnstilePromise) return _turnstilePromise;
+  if (window.turnstile)  return (_turnstilePromise = Promise.resolve());
+
+  _turnstilePromise = new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src   = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.onload = resolve;
+    document.head.appendChild(script);
+  });
+  return _turnstilePromise;
+}
+
+function useTurnstileScript() {
+  const [ready, setReady] = useState(() => !!window.turnstile);
   useEffect(() => {
     if (window.turnstile) { setReady(true); return; }
-    if (document.getElementById('cf-turnstile-script')) return;
-
-    const script = document.createElement('script');
-    script.id  = 'cf-turnstile-script';
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-    script.async = true;
-    script.onload = () => setReady(true);
-    document.head.appendChild(script);
+    loadTurnstileScript().then(() => setReady(true));
   }, []);
-
   return ready;
 }
 
