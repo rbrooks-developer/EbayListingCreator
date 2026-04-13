@@ -84,6 +84,13 @@ function ContactForm({ type, emailAddress, buttonLabel, placeholder }) {
     if (!message.trim() || status === 'sending') return;
     if (TURNSTILE_SITE_KEY && !token) return; // captcha not completed
 
+    const emailVal = email.trim();
+    if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      setErrMsg('Please enter a valid email address.');
+      setStatus('error');
+      return;
+    }
+
     setStatus('sending');
     setErrMsg('');
 
