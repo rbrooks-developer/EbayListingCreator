@@ -821,7 +821,7 @@ async function handleBillingCheckout(body, env) {
     'subscription_data[trial_period_days]': '14',
   }, env);
 
-  if (!sessionRes.ok) return err('Failed to create checkout session', 500, env);
+  if (!sessionRes.ok) return err(`Failed to create checkout session: ${sessionRes.data?.error?.message ?? sessionRes.status}`, 500, env);
   return ok({ url: sessionRes.data.url }, env);
 }
 
