@@ -26,6 +26,7 @@ export default function SiteHeader({ onSignInClick, onSignOut }) {
           <a href="#home">Home</a>
           <a href="#oauth">Connect to eBay</a>
           <a href="#listings">Listings</a>
+          <a href="#pricing">Pricing</a>
           <a href="#faq">FAQ</a>
           <a href="#contact">Contact</a>
         </nav>

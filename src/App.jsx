@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext.jsx';
-import { SubscriptionProvider } from './contexts/SubscriptionContext.jsx';
+import { SubscriptionProvider, useSubscription } from './contexts/SubscriptionContext.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import SiteHeader from './components/SiteHeader/SiteHeader.jsx';
 import HomePage from './components/HomePage/HomePage.jsx';
@@ -25,12 +25,25 @@ import RulesManager from './components/RulesManager/RulesManager.jsx';
 import FaqPage from './components/FaqPage/FaqPage.jsx';
 import ContactPage from './components/ContactPage/ContactPage.jsx';
 import CheckoutNotice from './components/CheckoutNotice/CheckoutNotice.jsx';
+import PricingSection from './components/PricingSection/PricingSection.jsx';
+import UpgradeModal, { hasSeenUpgradePrompt, markUpgradePromptSeen } from './components/UpgradeModal/UpgradeModal.jsx';
 
 function AppContent() {
   const { user } = useAuth();
 
   // ── Auth modal ──────────────────────────────────────────────────────────
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  // ── Upgrade modal — shown once to new free-tier users ───────────────────
+  const { usage } = useSubscription();
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  useEffect(() => {
+    if (!user || hasSeenUpgradePrompt()) return;
+    if (usage && usage.tier === 'free') {
+      setUpgradeModalOpen(true);
+      markUpgradePromptSeen();
+    }
+  }, [user, usage]);
 
   // ── Rules ───────────────────────────────────────────────────────────────
   const [rules, setRules] = useState([]);
@@ -217,11 +230,17 @@ function AppContent() {
           onSignInClick={() => setAuthModalOpen(true)}
         />
 
+        <PricingSection onSignInClick={() => setAuthModalOpen(true)} />
         <FaqPage />
         <ContactPage />
       </main>
 
       <CheckoutNotice />
+
+      <UpgradeModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+      />
 
       <AuthModal
         isOpen={authModalOpen}
