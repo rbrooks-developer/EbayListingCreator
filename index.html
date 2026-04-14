@@ -63,6 +63,106 @@
       ]
     }
     </script>
+
+    <!-- ── FAQ Structured Data (JSON-LD) ────────────────────────────────── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I connect my eBay account?",
+          "acceptedAnswer": { "@type": "Answer", "text": "In Step 1, enter your ZIP or postal code and click \"Connect Your eBay Account.\" You'll be redirected to eBay to authorize the app. Once you approve access, you'll be brought back automatically and your categories, shipping services, and fulfillment policies will be downloaded." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need an eBay developer account?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. The app uses standard eBay OAuth — the same login you use on eBay.com. No developer credentials or App IDs are needed." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I add a listing?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Click \"+ Add Row\" in the Listings toolbar. A blank row appears in the grid. Fill in the Title, select a Category, set your price and condition, then click \"Post to eBay\" when ready." }
+        },
+        {
+          "@type": "Question",
+          "name": "What fields are required to post a listing?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Title and Category are required. Without them the \"Post to eBay\" button stays disabled. Price is required for Buy It Now listings. Auction listings need a Start Price and Auction Days." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I add images to a listing?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Click the \"Images\" button in the listing row to open the Image Manager. Click \"+ Add Images\" or the \"+\" tile to browse your computer for photos. You can select multiple images at once. Images are uploaded directly to eBay's picture service in the background." }
+        },
+        {
+          "@type": "Question",
+          "name": "How many images can I add per listing?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Up to 24 images per listing, which is eBay's maximum." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I set the main image?",
+          "acceptedAnswer": { "@type": "Answer", "text": "The first image in the grid is always the main image — it's shown in eBay search results and at the top of your listing. Drag and drop any image to the first slot to make it the main photo." }
+        },
+        {
+          "@type": "Question",
+          "name": "What are Listing Rules?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Rules automatically fill in item specifics based on a listing's category and title keywords. For example: if the category is \"Bobbleheads\" and the title contains \"Funko\", a rule can automatically set the \"Type\" specific to \"Vinyl Figure\"." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I create a rule?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Click the \"Rules\" button in the Listings toolbar. Sign in if prompted, then click \"+ Add Rule.\" Choose a category, select the item specific and its value, and optionally enter comma-separated keywords from the title. Leave keywords blank to apply the rule to every listing in that category." }
+        },
+        {
+          "@type": "Question",
+          "name": "What file formats can I import?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Excel (.xlsx, .xls) and CSV (.csv) files are supported." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I export my listings back to Excel?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Click \"Export Excel\" in the toolbar. The exported file uses the same column format as the import template, with trading card fields exported as human-readable labels so the file is easy to read and can be re-imported without changes." }
+        },
+        {
+          "@type": "Question",
+          "name": "Will my listings be saved if I refresh the page?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Listings are automatically saved in your browser's local storage and restored when you reload the page. Images that were already uploaded to eBay will still display correctly after a refresh." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I post a listing to eBay?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Click the \"Post to eBay\" button in the Status column of any row. The button is enabled once you have a Title and Category. The status updates in real time — green \"Listed\" with the eBay item ID on success, or a red error message if something needs fixing." }
+        },
+        {
+          "@type": "Question",
+          "name": "What does Post All do?",
+          "acceptedAnswer": { "@type": "Answer", "text": "\"Post All\" appears in the toolbar when there are listings ready to post. It submits every row that has a title and category and has not been posted yet, one at a time. You can watch each row update as it goes." }
+        },
+        {
+          "@type": "Question",
+          "name": "Which categories require special condition handling?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Three eBay categories use a dedicated graded/ungraded condition system instead of the standard New/Used dropdown: Sports Trading Cards (261328), Non-Sport Trading Cards (183050), and Collectible Card Games/MTG (183454)." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I set the condition for a trading card listing?",
+          "acceptedAnswer": { "@type": "Answer", "text": "In the Condition column for a trading card category, select \"Graded\" or \"Ungraded\" from the dropdown. A modal will open where you can fill in the details. For graded cards: choose the grading company (PSA, BGS, CGC, etc.), the numeric grade (10, 9.5, 9, …), and an optional certification number. For ungraded cards: choose the card condition (Near Mint or Better, Excellent, etc.)." }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a Shipping Policy vs. a Shipping Method?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A Shipping Policy is a saved template in your eBay account that bundles together your shipping preferences. A Shipping Method is the specific carrier service used for calculated shipping — for example, USPS Ground Advantage. Both can be set per listing." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to fill in dimensions and weight?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Only if you are using calculated shipping. If your shipping policy uses flat-rate shipping the dimensions and weight fields are optional." }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
