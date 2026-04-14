@@ -46,7 +46,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
         <div className={styles.header}>
           <h2 className={styles.title}>You're on the Free plan</h2>
           <p className={styles.subtitle}>
-            Unlock more listings, rules, and images by upgrading. Both plans include a 7-day free trial.
+            Unlock more listings, rules, and images by upgrading.
           </p>
         </div>
 

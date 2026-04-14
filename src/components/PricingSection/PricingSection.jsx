@@ -29,7 +29,7 @@ const PLANS = [
     name:        'Pro',
     price:       '$10',
     period:      '/ month',
-    description: 'For regular sellers who need more volume and automation. 7-day free trial.',
+    description: 'For regular sellers who need more volume and automation.',
     features: [
       '150 listings per month',
       '25 listing rules',
@@ -46,7 +46,7 @@ const PLANS = [
     name:        'Business',
     price:       '$25',
     period:      '/ month',
-    description: 'For power sellers with high volume and complex workflows. 7-day free trial.',
+    description: 'For power sellers with high volume and complex workflows.',
     features: [
       'Unlimited listings',
       'Unlimited listing rules',
