@@ -60,6 +60,8 @@ const PLANS = [
   },
 ];
 
+const TIER_RANK = { free: 0, pro: 1, business: 2 };
+
 export default function PricingSection({ onSignInClick }) {
   const { user } = useAuth();
   const { usage } = useSubscription();
@@ -113,7 +115,9 @@ export default function PricingSection({ onSignInClick }) {
               btnLabel    = 'Free Plan';
               btnDisabled = true;
             } else {
-              btnLabel = isLoading ? 'Redirecting…' : `Upgrade to ${plan.name}`;
+              const isUpgrade = TIER_RANK[plan.id] > TIER_RANK[currentTier];
+              const verb = isUpgrade ? 'Upgrade' : 'Downgrade';
+              btnLabel = isLoading ? 'Redirecting…' : `${verb} to ${plan.name}`;
             }
 
             return (
