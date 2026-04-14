@@ -886,9 +886,11 @@ async function handleStripeWebhook(request, env) {
         const periodEnd = sub?.current_period_end
           ? new Date(sub.current_period_end * 1000).toISOString() : null;
 
-        await supabaseFetch(`/user_subscriptions?user_id=eq.${userId}`, {
-          method: 'PATCH',
+        await supabaseFetch(`/user_subscriptions`, {
+          method:  'POST',
+          headers: { Prefer: 'resolution=merge-duplicates' },
           body: JSON.stringify({
+            user_id:            userId,
             tier,
             stripe_customer_id: customerId,
             stripe_sub_id:      subId,
