@@ -45,7 +45,12 @@ export async function startCheckout(priceId) {
   const supabaseToken = await getToken();
   if (!supabaseToken) throw new Error('You must be signed in to upgrade.');
   const data = await workerPost('billing/checkout', { supabaseToken, priceId });
-  window.location.href = data.url;
+  if (data.upgraded) {
+    // Existing subscription was updated in place — reload to refresh usage/tier
+    window.location.reload();
+  } else {
+    window.location.href = data.url;
+  }
 }
 
 /**

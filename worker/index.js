@@ -798,18 +798,54 @@ async function handleBillingCheckout(body, env) {
     const userData = await userRes.json().catch(() => ({}));
     const email    = userData?.email ?? '';
 
-    const customerRes = await stripeFetch('/customers', { email, 'metadata[supabase_user_id]': userId }, env);
-    if (!customerRes.ok) return err(`Failed to create Stripe customer: ${customerRes.data?.error?.message ?? customerRes.status}`, 500, env);
-    customerId = customerRes.data.id;
+    // Check if a Stripe customer already exists for this email to avoid duplicates
+    const searchRes = await fetch(
+      `https://api.stripe.com/v1/customers/search?query=email:'${encodeURIComponent(email)}'&limit=1`,
+      { headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } }
+    );
+    const searchData = await searchRes.json().catch(() => ({}));
+    customerId = searchData?.data?.[0]?.id ?? null;
 
-    // Save customer ID to Supabase
-    await supabaseFetch(`/user_subscriptions?user_id=eq.${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ stripe_customer_id: customerId, updated_at: new Date().toISOString() }),
+    if (!customerId) {
+      const customerRes = await stripeFetch('/customers', { email, 'metadata[supabase_user_id]': userId }, env);
+      if (!customerRes.ok) return err(`Failed to create Stripe customer: ${customerRes.data?.error?.message ?? customerRes.status}`, 500, env);
+      customerId = customerRes.data.id;
+    }
+
+    // Save customer ID to Supabase via upsert
+    await supabaseFetch(`/user_subscriptions`, {
+      method:  'POST',
+      headers: { Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        user_id:            userId,
+        tier:               billing.tier ?? 'free',
+        stripe_customer_id: customerId,
+        updated_at:         new Date().toISOString(),
+      }),
     }, env);
   }
 
-  // Create Checkout Session
+  // If user already has a subscription, upgrade/downgrade it instead of creating a new one
+  if (billing.stripeSubId) {
+    // Fetch current subscription to get the item ID
+    const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${billing.stripeSubId}`, {
+      headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` },
+    });
+    const sub = await subRes.json().catch(() => ({}));
+    const itemId = sub?.items?.data?.[0]?.id;
+
+    if (itemId) {
+      const updateRes = await stripeFetch(`/subscriptions/${billing.stripeSubId}`, {
+        'items[0][id]':    itemId,
+        'items[0][price]': priceId,
+        'proration_behavior': 'create_prorations',
+      }, env);
+      if (!updateRes.ok) return err(`Failed to update subscription: ${updateRes.data?.error?.message ?? updateRes.status}`, 500, env);
+      return ok({ upgraded: true }, env);
+    }
+  }
+
+  // No existing subscription — create Checkout Session
   const sessionRes = await stripeFetch('/checkout/sessions', {
     customer:               customerId,
     mode:                   'subscription',
