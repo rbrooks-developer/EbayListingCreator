@@ -825,8 +825,8 @@ async function handleBillingCheckout(body, env) {
     }, env);
   }
 
-  // If user already has a subscription, send them to the billing portal to change plan
-  if (billing.stripeCustomerId) {
+  // If user has an active subscription, send them to the billing portal to change plan
+  if (billing.stripeSubId) {
     const portalRes = await stripeFetch('/billing_portal/sessions', {
       customer:   billing.stripeCustomerId,
       return_url: origin,
@@ -933,25 +933,34 @@ async function handleStripeWebhook(request, env) {
       }
 
       case 'customer.subscription.updated': {
-        const sub       = event.data.object;
-        const priceId   = sub?.items?.data?.[0]?.price?.id ?? '';
-        const tier      = tierMap[priceId] ?? 'pro';
+        const sub        = event.data.object;
         const customerId = sub.customer;
-        const periodStart = sub.current_period_start
-          ? new Date(sub.current_period_start * 1000).toISOString() : null;
-        const periodEnd = sub.current_period_end
-          ? new Date(sub.current_period_end * 1000).toISOString() : null;
+        const status     = sub.status;
 
-        await supabaseFetch(`/user_subscriptions?stripe_customer_id=eq.${customerId}`, {
+        // If cancelled, treat as free immediately
+        const tier = (status === 'canceled')
+          ? 'free'
+          : (tierMap[sub?.items?.data?.[0]?.price?.id ?? ''] ?? 'pro');
+
+        const periodStart = sub.current_period_start
+          ? new Date(sub.current_period_start * 1000).toISOString()
+          : new Date().toISOString();
+        const periodEnd = sub.current_period_end
+          ? new Date(sub.current_period_end * 1000).toISOString()
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        console.log('webhook: subscription updated', { customerId, status, tier });
+        const updRes = await supabaseFetch(`/user_subscriptions?stripe_customer_id=eq.${customerId}`, {
           method: 'PATCH',
           body: JSON.stringify({
             tier,
-            stripe_sub_id: sub.id,
+            stripe_sub_id: status === 'canceled' ? null : sub.id,
             period_start:  periodStart,
             period_end:    periodEnd,
             updated_at:    new Date().toISOString(),
           }),
         }, env);
+        console.log('webhook: subscription updated result', updRes.status, JSON.stringify(updRes.data));
         break;
       }
 
@@ -959,7 +968,8 @@ async function handleStripeWebhook(request, env) {
         const sub        = event.data.object;
         const customerId = sub.customer;
 
-        await supabaseFetch(`/user_subscriptions?stripe_customer_id=eq.${customerId}`, {
+        console.log('webhook: subscription deleted', { customerId });
+        const delRes = await supabaseFetch(`/user_subscriptions?stripe_customer_id=eq.${customerId}`, {
           method: 'PATCH',
           body: JSON.stringify({
             tier:          'free',
@@ -967,6 +977,7 @@ async function handleStripeWebhook(request, env) {
             updated_at:    new Date().toISOString(),
           }),
         }, env);
+        console.log('webhook: subscription deleted result', delRes.status, JSON.stringify(delRes.data));
         break;
       }
 

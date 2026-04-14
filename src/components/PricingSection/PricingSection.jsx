@@ -116,8 +116,8 @@ export default function PricingSection({ onSignInClick }) {
               btnDisabled = true;
             } else {
               const isUpgrade = TIER_RANK[plan.id] > TIER_RANK[currentTier];
-              const verb = isUpgrade ? 'Upgrade' : 'Downgrade';
-              btnLabel = isLoading ? 'Redirecting…' : `${verb} to ${plan.name}`;
+              btnLabel = isLoading ? 'Redirecting…' : `Upgrade to ${plan.name}`;
+              if (!isUpgrade) btnDisabled = true;
             }
 
             return (
