@@ -798,7 +798,7 @@ async function handleBillingCheckout(body, env) {
     const userData = await userRes.json().catch(() => ({}));
     const email    = userData?.email ?? '';
 
-    const customerRes = await stripeFetch('/customers', { email, metadata: { supabase_user_id: userId } }, env);
+    const customerRes = await stripeFetch('/customers', { email, 'metadata[supabase_user_id]': userId }, env);
     if (!customerRes.ok) return err(`Failed to create Stripe customer: ${customerRes.data?.error?.message ?? customerRes.status}`, 500, env);
     customerId = customerRes.data.id;
 
