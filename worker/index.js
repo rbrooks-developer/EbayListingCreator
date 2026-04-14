@@ -960,22 +960,17 @@ const CONTACT_ADDRESSES = {
   suggestion: 'suggestions@createmylistings.com',
 };
 
-async function handleContact({ type, name, email, subject, message, captchaToken }, env) {
+async function handleContact({ type, name, email, subject, message, honeypot }, env) {
+  // Honeypot: bots fill hidden fields, humans don't
+  if (honeypot) return ok({ sent: true }, env); // silently drop
+
   // Validate inputs
   if (!CONTACT_ADDRESSES[type])  return err('Invalid contact type', 400, env);
   if (!message?.trim())          return err('Message is required', 400, env);
-  if (!captchaToken)             return err('CAPTCHA token missing', 400, env);
 
   if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) {
     return err('Email delivery is not configured', 503, env);
   }
-  if (!env.TURNSTILE_SECRET_KEY) {
-    return err('CAPTCHA verification is not configured', 503, env);
-  }
-
-  // Verify Cloudflare Turnstile token before doing anything else
-  const captchaOk = await verifyTurnstile(captchaToken, env.TURNSTILE_SECRET_KEY);
-  if (!captchaOk) return err('CAPTCHA verification failed — please try again', 403, env);
 
   const to          = CONTACT_ADDRESSES[type];
   const subjectLine = subject?.trim() ||
@@ -1001,22 +996,6 @@ async function handleContact({ type, name, email, subject, message, captchaToken
   } catch (e) {
     console.error('SMTP error:', e.message);
     return err('Failed to send message — please try again later', 500, env);
-  }
-}
-
-// ── Cloudflare Turnstile verification ─────────────────────────────────────────
-
-async function verifyTurnstile(token, secretKey) {
-  try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `secret=${encodeURIComponent(secretKey)}&response=${encodeURIComponent(token)}`,
-    });
-    const data = await res.json();
-    return data.success === true;
-  } catch {
-    return false;
   }
 }
 

@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import styles from './ContactPage.module.css';
 
-const WORKER_URL   = (import.meta.env.VITE_TOKEN_WORKER_URL ?? '').replace(/\/$/, '');
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? '';
+const WORKER_URL = (import.meta.env.VITE_TOKEN_WORKER_URL ?? '').replace(/\/$/, '');
 
 const SUGGESTION_PROMPTS = [
   { icon: '✨', text: 'A new column or field you wish the listing grid had' },
@@ -13,76 +12,20 @@ const SUGGESTION_PROMPTS = [
   { icon: '⚡', text: 'Speed or workflow improvements for bulk listing' },
 ];
 
-// Module-level promise so all TurnstileWidget instances share one script load.
-// The second widget was returning early when it found the <script> tag already
-// in the DOM and never setting ready=true.
-let _turnstilePromise = null;
-
-function loadTurnstileScript() {
-  if (_turnstilePromise) return _turnstilePromise;
-  if (window.turnstile)  return (_turnstilePromise = Promise.resolve());
-
-  _turnstilePromise = new Promise((resolve) => {
-    const script = document.createElement('script');
-    script.src   = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-    script.async = true;
-    script.onload = resolve;
-    document.head.appendChild(script);
-  });
-  return _turnstilePromise;
-}
-
-function useTurnstileScript() {
-  const [ready, setReady] = useState(() => !!window.turnstile);
-  useEffect(() => {
-    if (window.turnstile) { setReady(true); return; }
-    loadTurnstileScript().then(() => setReady(true));
-  }, []);
-  return ready;
-}
-
-function TurnstileWidget({ onToken, onExpire, formId }) {
-  const containerRef = useRef(null);
-  const widgetId     = useRef(null);
-  const scriptReady  = useTurnstileScript();
-
-  useEffect(() => {
-    if (!scriptReady || !containerRef.current || !TURNSTILE_SITE_KEY) return;
-    if (widgetId.current !== null) return; // already rendered
-
-    widgetId.current = window.turnstile.render(containerRef.current, {
-      sitekey:           TURNSTILE_SITE_KEY,
-      callback:          onToken,
-      'expired-callback': onExpire,
-      'error-callback':  onExpire,
-    });
-
-    return () => {
-      if (widgetId.current !== null) {
-        window.turnstile?.remove(widgetId.current);
-        widgetId.current = null;
-      }
-    };
-  }, [scriptReady]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!TURNSTILE_SITE_KEY) return null;
-
-  return <div ref={containerRef} className={styles.captcha} />;
-}
-
 function ContactForm({ type, emailAddress, buttonLabel, placeholder }) {
   const [name,    setName]    = useState('');
   const [email,   setEmail]   = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [token,   setToken]   = useState('');
   const [status,  setStatus]  = useState('idle'); // idle | sending | success | error
   const [errMsg,  setErrMsg]  = useState('');
+
+  // Honeypot field — must stay empty; bots fill it, humans don't
+  const [honeypot, setHoneypot] = useState('');
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!message.trim() || status === 'sending') return;
-    if (TURNSTILE_SITE_KEY && !token) return; // captcha not completed
 
     const emailVal = email.trim();
     if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
@@ -100,11 +43,11 @@ function ContactForm({ type, emailAddress, buttonLabel, placeholder }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type,
-          name:         name.trim(),
-          email:        email.trim(),
-          subject:      subject.trim(),
-          message:      message.trim(),
-          captchaToken: token,
+          name:     name.trim(),
+          email:    emailVal,
+          subject:  subject.trim(),
+          message:  message.trim(),
+          honeypot,
         }),
       });
 
@@ -115,22 +58,30 @@ function ContactForm({ type, emailAddress, buttonLabel, placeholder }) {
       }
 
       setStatus('success');
-      setName(''); setEmail(''); setSubject(''); setMessage(''); setToken('');
-      // Reset Turnstile widget so it's ready for another submission
-      window.turnstile?.reset();
+      setName(''); setEmail(''); setSubject(''); setMessage('');
 
     } catch (e) {
       setErrMsg(e.message);
       setStatus('error');
-      window.turnstile?.reset();
-      setToken('');
     }
   }
 
-  const canSubmit = message.trim() && (!TURNSTILE_SITE_KEY || token) && status !== 'sending';
+  const canSubmit = message.trim() && status !== 'sending';
 
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      {/* Honeypot — hidden from real users */}
+      <div style={{ display: 'none' }} aria-hidden="true">
+        <input
+          type="text"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+        />
+      </div>
+
       <div className={styles.fieldRow}>
         <div className={styles.field}>
           <label className={styles.label} htmlFor={`${type}-name`}>Your name</label>
@@ -188,12 +139,6 @@ function ContactForm({ type, emailAddress, buttonLabel, placeholder }) {
           disabled={status === 'sending'}
         />
       </div>
-
-      <TurnstileWidget
-        formId={type}
-        onToken={setToken}
-        onExpire={() => setToken('')}
-      />
 
       {status === 'success' && (
         <div className={styles.successMsg} role="status">
