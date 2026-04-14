@@ -825,24 +825,14 @@ async function handleBillingCheckout(body, env) {
     }, env);
   }
 
-  // If user already has a subscription, upgrade/downgrade it instead of creating a new one
-  if (billing.stripeSubId) {
-    // Fetch current subscription to get the item ID
-    const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${billing.stripeSubId}`, {
-      headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` },
-    });
-    const sub = await subRes.json().catch(() => ({}));
-    const itemId = sub?.items?.data?.[0]?.id;
-
-    if (itemId) {
-      const updateRes = await stripeFetch(`/subscriptions/${billing.stripeSubId}`, {
-        'items[0][id]':    itemId,
-        'items[0][price]': priceId,
-        'proration_behavior': 'create_prorations',
-      }, env);
-      if (!updateRes.ok) return err(`Failed to update subscription: ${updateRes.data?.error?.message ?? updateRes.status}`, 500, env);
-      return ok({ upgraded: true }, env);
-    }
+  // If user already has a subscription, send them to the billing portal to change plan
+  if (billing.stripeCustomerId) {
+    const portalRes = await stripeFetch('/billing_portal/sessions', {
+      customer:   billing.stripeCustomerId,
+      return_url: origin,
+    }, env);
+    if (!portalRes.ok) return err(`Failed to open billing portal: ${portalRes.data?.error?.message ?? portalRes.status}`, 500, env);
+    return ok({ url: portalRes.data.url }, env);
   }
 
   // No existing subscription — create Checkout Session
@@ -855,7 +845,6 @@ async function handleBillingCheckout(body, env) {
     success_url:            `${origin}?checkout=success`,
     cancel_url:             `${origin}?checkout=cancel`,
     client_reference_id:    userId,
-    'subscription_data[trial_period_days]': '7',
   }, env);
 
   if (!sessionRes.ok) return err(`Failed to create checkout session: ${sessionRes.data?.error?.message ?? sessionRes.status}`, 500, env);
