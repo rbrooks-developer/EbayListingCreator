@@ -783,7 +783,7 @@ async function handleBillingCheckout(body, env) {
   if (!userId) return err('Invalid or expired session', 401, env);
 
   const billing     = await getUserBilling(userId, env);
-  const origin      = env.ALLOWED_ORIGIN || 'https://createmylistings.com';
+  const origin      = 'https://createmylistings.com';
 
   // Get or create Stripe customer
   let customerId = billing.stripeCustomerId;
