@@ -815,6 +815,7 @@ async function handleBillingCheckout(body, env) {
     mode:                   'subscription',
     'line_items[0][price]': priceId,
     'line_items[0][quantity]': '1',
+    allow_promotion_codes:  'true',
     success_url:            `${origin}?checkout=success`,
     cancel_url:             `${origin}?checkout=cancel`,
     client_reference_id:    userId,
