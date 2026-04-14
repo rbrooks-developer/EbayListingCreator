@@ -49,10 +49,18 @@ export default function ImageManagerModal({ images: initialImages, onChange, acc
     const remaining = MAX_IMAGES - images.length;
     const selected = files.slice(0, remaining);
 
-    const placeholders = selected.map((f) => ({
+    // Convert each file to a base64 data URL so previews survive page refreshes
+    const toDataUrl = (file) => new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => resolve(ev.target.result);
+      reader.readAsDataURL(file);
+    });
+    const dataUrls = await Promise.all(selected.map(toDataUrl));
+
+    const placeholders = selected.map((f, i) => ({
       id: crypto.randomUUID(),
       name: f.name,
-      previewUrl: URL.createObjectURL(f),
+      previewUrl: dataUrls[i],
       ebayUrl: '',
       status: 'uploading',
       error: '',
