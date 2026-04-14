@@ -884,9 +884,13 @@ async function handleStripeWebhook(request, env) {
         const periodStart = sub?.current_period_start
           ? new Date(sub.current_period_start * 1000).toISOString() : new Date().toISOString();
         const periodEnd = sub?.current_period_end
-          ? new Date(sub.current_period_end * 1000).toISOString() : null;
+          ? new Date(sub.current_period_end * 1000).toISOString()
+          : sub?.trial_end
+            ? new Date(sub.trial_end * 1000).toISOString()
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-        await supabaseFetch(`/user_subscriptions`, {
+        console.log('webhook: upserting subscription', { userId, tier, priceId, subId });
+        const upsertRes = await supabaseFetch(`/user_subscriptions`, {
           method:  'POST',
           headers: { Prefer: 'resolution=merge-duplicates' },
           body: JSON.stringify({
@@ -899,6 +903,7 @@ async function handleStripeWebhook(request, env) {
             updated_at:         new Date().toISOString(),
           }),
         }, env);
+        console.log('webhook: upsert result', upsertRes.status, JSON.stringify(upsertRes.data));
         break;
       }
 
