@@ -57,7 +57,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
           <div className={styles.plan}>
             <div className={styles.planHeader}>
               <span className={styles.planName}>Pro</span>
-              <span className={styles.planPrice}>$10 <span className={styles.planPeriod}>/ month</span></span>
+              <span className={styles.planPrice}>$9.99 <span className={styles.planPeriod}>/ month</span></span>
             </div>
             <ul className={styles.features}>
               <li>150 listings per month</li>
@@ -70,14 +70,14 @@ export default function UpgradeModal({ isOpen, onClose }) {
               disabled={!!upgrading}
               onClick={() => handleUpgrade(PRO_PRICE_ID, 'pro')}
             >
-              {upgrading === 'pro' ? 'Redirecting…' : 'Upgrade to Pro — $10/mo'}
+              {upgrading === 'pro' ? 'Redirecting…' : 'Upgrade to Pro — $9.99/mo'}
             </button>
           </div>
 
           <div className={`${styles.plan} ${styles.planHighlighted}`}>
             <div className={styles.planHeader}>
               <span className={styles.planName}>Business</span>
-              <span className={styles.planPrice}>$25 <span className={styles.planPeriod}>/ month</span></span>
+              <span className={styles.planPrice}>$24.99 <span className={styles.planPeriod}>/ month</span></span>
             </div>
             <ul className={styles.features}>
               <li>Unlimited listings</li>
@@ -90,7 +90,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
               disabled={!!upgrading}
               onClick={() => handleUpgrade(BUSINESS_PRICE_ID, 'business')}
             >
-              {upgrading === 'business' ? 'Redirecting…' : 'Upgrade to Business — $25/mo'}
+              {upgrading === 'business' ? 'Redirecting…' : 'Upgrade to Business — $24.99/mo'}
             </button>
           </div>
 

@@ -27,7 +27,7 @@ const PLANS = [
   {
     id:          'pro',
     name:        'Pro',
-    price:       '$10',
+    price:       '$9.99',
     period:      '/ month',
     description: 'For regular sellers who need more volume and automation.',
     features: [
@@ -44,7 +44,7 @@ const PLANS = [
   {
     id:          'business',
     name:        'Business',
-    price:       '$25',
+    price:       '$24.99',
     period:      '/ month',
     description: 'For power sellers with high volume and complex workflows.',
     features: [

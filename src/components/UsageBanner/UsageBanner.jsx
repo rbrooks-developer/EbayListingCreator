@@ -69,7 +69,7 @@ export default function UsageBanner() {
               disabled={upgrading}
               onClick={() => handleUpgrade(PRO_PRICE_ID)}
             >
-              {upgrading ? 'Redirecting…' : 'Upgrade to Pro — $10/mo'}
+              {upgrading ? 'Redirecting…' : 'Upgrade to Pro — $9.99/mo'}
             </button>
           )}
           {BUSINESS_PRICE_ID && (
