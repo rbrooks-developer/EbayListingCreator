@@ -289,6 +289,18 @@ export default function ListingGrid({
     );
   }
 
+  // ── Prewarm cache on page load / reconnect ───────────────────────────────
+  // When listings are restored from localStorage after a refresh the in-memory
+  // aspectsCache is empty, so every row shows "Click to load". Fire prewarm
+  // as soon as an access token is available and force a re-render afterwards.
+  useEffect(() => {
+    const categoryIds = listings.map((l) => l.categoryId).filter(Boolean);
+    if (!categoryIds.length) return;
+    prewarmAspects(categoryIds).then(() => {
+      onChange([...listings]);          // shallow copy triggers re-render so dots update
+    });
+  }, [accessToken, categoryTreeId]);   // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Excel import ─────────────────────────────────────────────────────────
 
   async function handleFileChange(e) {

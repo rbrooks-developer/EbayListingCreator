@@ -929,6 +929,13 @@ async function handleStripeWebhook(request, env) {
           }),
         }, env);
         console.log('webhook: upsert result', upsertRes.status, JSON.stringify(upsertRes.data));
+
+        // Reset usage counter — new subscription or upgrade starts a fresh period
+        await supabaseFetch(`/usage_counters?user_id=eq.${userId}`, {
+          method: 'PATCH',
+          body:   JSON.stringify({ listings_used: 0, period_start: periodStart }),
+        }, env).catch(() => {});
+        console.log('webhook: usage counter reset for new subscription', userId);
         break;
       }
 
@@ -949,6 +956,13 @@ async function handleStripeWebhook(request, env) {
           ? new Date(sub.current_period_end * 1000).toISOString()
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
+        // Fetch stored subscription BEFORE updating so we can detect a period change
+        const storedRes = await supabaseFetch(
+          `/user_subscriptions?stripe_customer_id=eq.${customerId}&select=user_id,period_start`,
+          {}, env
+        ).catch(() => null);
+        const stored = Array.isArray(storedRes?.data) ? storedRes.data[0] : null;
+
         console.log('webhook: subscription updated', { customerId, status, tier });
         const updRes = await supabaseFetch(`/user_subscriptions?stripe_customer_id=eq.${customerId}`, {
           method: 'PATCH',
@@ -961,6 +975,19 @@ async function handleStripeWebhook(request, env) {
           }),
         }, env);
         console.log('webhook: subscription updated result', updRes.status, JSON.stringify(updRes.data));
+
+        // Reset usage counter if the billing period has advanced (monthly renewal)
+        if (stored?.user_id && sub.current_period_start) {
+          const storedMs = stored.period_start ? new Date(stored.period_start).getTime() : 0;
+          const newMs    = sub.current_period_start * 1000;
+          if (newMs > storedMs) {
+            await supabaseFetch(`/usage_counters?user_id=eq.${stored.user_id}`, {
+              method: 'PATCH',
+              body:   JSON.stringify({ listings_used: 0, period_start: periodStart }),
+            }, env).catch(() => {});
+            console.log('webhook: usage counter reset (new billing period)', stored.user_id);
+          }
+        }
         break;
       }
 
