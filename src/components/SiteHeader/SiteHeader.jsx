@@ -11,6 +11,7 @@ export default function SiteHeader({ onSignInClick, onSignOut }) {
 
   return (
     <header className={styles.header}>
+      <a href="#main-content" className={styles.skipLink}>Skip to main content</a>
       <div className={styles.inner}>
         <div className={styles.brand}>
           <span className={styles.logo} aria-hidden="true">

@@ -1,3 +1,24 @@
+.skipLink {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  padding: 0.6rem 1.2rem;
+  background: var(--ebay-blue);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 6px 0;
+  z-index: 200;
+  transition: top 0.1s;
+}
+
+.skipLink:focus {
+  top: 0;
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
 .header {
   position: sticky;
   top: 0;

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 import { SubscriptionProvider, useSubscription } from './contexts/SubscriptionContext.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
@@ -27,9 +28,46 @@ import ContactPage from './components/ContactPage/ContactPage.jsx';
 import CheckoutNotice from './components/CheckoutNotice/CheckoutNotice.jsx';
 import PricingSection from './components/PricingSection/PricingSection.jsx';
 import UpgradeModal, { hasSeenUpgradePrompt, markUpgradePromptSeen } from './components/UpgradeModal/UpgradeModal.jsx';
+import SiteFooter from './components/SiteFooter/SiteFooter.jsx';
+
+const SECTION_TITLES = [
+  { id: 'pricing', title: 'Pricing — Create My Listings' },
+  { id: 'faq',     title: 'FAQ — Create My Listings' },
+  { id: 'contact', title: 'Contact — Create My Listings' },
+];
+const DEFAULT_TITLE = 'eBay Listing Creator — Bulk List Items on eBay from Your Browser';
 
 function AppContent() {
   const { user } = useAuth();
+
+  // ── Page title — updates as user scrolls to major sections ─────────────
+  const [pageTitle, setPageTitle] = useState(DEFAULT_TITLE);
+  useEffect(() => {
+    const observers = SECTION_TITLES.map(({ id, title }) => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setPageTitle(title); },
+        { threshold: 0.3 }
+      );
+      obs.observe(el);
+      return obs;
+    });
+    // Reset to default when all sections leave viewport (scrolled back to top)
+    const homeEl = document.getElementById('home');
+    let homeObs = null;
+    if (homeEl) {
+      homeObs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setPageTitle(DEFAULT_TITLE); },
+        { threshold: 0.1 }
+      );
+      homeObs.observe(homeEl);
+    }
+    return () => {
+      observers.forEach((o) => o?.disconnect());
+      homeObs?.disconnect();
+    };
+  }, []);
 
   // ── Auth modal ──────────────────────────────────────────────────────────
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -187,9 +225,13 @@ function AppContent() {
 
   return (
     <>
+      <Helmet>
+        <title>{pageTitle}</title>
+      </Helmet>
+
       <SiteHeader onSignInClick={() => setAuthModalOpen(true)} />
 
-      <main>
+      <main id="main-content">
         <HomePage onSignInClick={() => setAuthModalOpen(true)} />
 
         <OAuthSection
@@ -234,6 +276,8 @@ function AppContent() {
         <FaqPage />
         <ContactPage />
       </main>
+
+      <SiteFooter />
 
       <CheckoutNotice />
 
