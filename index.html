@@ -30,6 +30,11 @@
     <!-- ── Favicon ──────────────────────────────────────────────────────── -->
     <link rel="icon" type="image/svg+xml" href="./ebay-icon.svg" />
 
+    <!-- ── Preconnect hints ─────────────────────────────────────────────── -->
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
+    <link rel="preconnect" href="https://www.google-analytics.com" />
+    <link rel="preconnect" href="https://epvahmcntvmnsxqnbvlu.supabase.co" />
+
     <!-- ── Google Analytics ─────────────────────────────────────────────── -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-71R3KXQ6DK"></script>
     <script>
@@ -49,11 +54,29 @@
       "description": "Create and post eBay listings in bulk. Import from Excel or CSV, manage photos, fill item specifics, and post directly to eBay from your browser.",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Free",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "20 listings per month, 5 listing rules, up to 4 images per listing"
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro",
+          "price": "9.99",
+          "priceCurrency": "USD",
+          "description": "150 listings per month, 25 listing rules, up to 10 images per listing, priority support"
+        },
+        {
+          "@type": "Offer",
+          "name": "Business",
+          "price": "24.99",
+          "priceCurrency": "USD",
+          "description": "Unlimited listings, unlimited listing rules, up to 24 images per listing, priority support"
+        }
+      ],
       "featureList": [
         "Bulk import listings from Excel or CSV",
         "Upload images directly to eBay picture service",
