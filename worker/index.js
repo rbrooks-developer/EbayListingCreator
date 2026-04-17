@@ -614,14 +614,40 @@ async function handleCreateListing(body, env) {
     body: xml,
   });
 
-  const text     = await res.text();
-  const ack      = text.match(/<Ack>(.*?)<\/Ack>/)?.[1];
-  const itemId   = text.match(/<ItemID>(\d+)<\/ItemID>/)?.[1];
-  const shortMsg = decodeEntities(text.match(/<ShortMessage>(.*?)<\/ShortMessage>/)?.[1] ?? '');
-  const longMsg  = decodeEntities(text.match(/<LongMessage>(.*?)<\/LongMessage>/)?.[1] ?? '');
+  const text  = await res.text();
+  const ack   = text.match(/<Ack>(.*?)<\/Ack>/)?.[1];
+  const itemId = text.match(/<ItemID>(\d+)<\/ItemID>/)?.[1];
+
+  // ── Extract all <Errors> blocks and pick the most useful message ──────────
+  // eBay often returns a harmless "item specifics renamed" warning as the first
+  // block, masking the real error that follows. We extract every block, prefer
+  // SeverityCode=Error over Warning, then filter known noise.
+  const NOISE = [
+    'item specifics were renamed',
+    'item specifics have been changed',
+    'recommended item specifics',
+  ];
+  function extractEbayError(xml) {
+    const blocks = [...xml.matchAll(/<Errors>([\s\S]*?)<\/Errors>/g)].map((m) => {
+      const inner    = m[1];
+      const severity = inner.match(/<SeverityCode>(.*?)<\/SeverityCode>/)?.[1] ?? 'Warning';
+      const long     = decodeEntities(inner.match(/<LongMessage>(.*?)<\/LongMessage>/)?.[1] ?? '');
+      const short    = decodeEntities(inner.match(/<ShortMessage>(.*?)<\/ShortMessage>/)?.[1] ?? '');
+      return { severity, msg: long || short };
+    });
+    const errors   = blocks.filter((b) => b.severity === 'Error');
+    const pool     = errors.length ? errors : blocks;
+    const messages = pool.map((b) => b.msg).filter(Boolean);
+    // Remove noise only when real errors are present
+    const cleaned  = errors.length
+      ? messages.filter((m) => !NOISE.some((n) => m.toLowerCase().includes(n)))
+      : messages;
+    return (cleaned.length ? cleaned : messages).join(' · ') || null;
+  }
 
   if (ack === 'Failure' || (!itemId && ack !== 'Success' && ack !== 'Warning')) {
-    return err(longMsg || shortMsg || `Trading API error (${res.status})`, 400, env);
+    const msg = extractEbayError(text) ?? `Trading API error (${res.status})`;
+    return err(msg, 400, env);
   }
 
   // ── Increment usage counter on success ────────────────────────────────────

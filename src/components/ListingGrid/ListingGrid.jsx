@@ -13,6 +13,50 @@ import ImageManagerModal from '../ImageManagerModal/ImageManagerModal.jsx';
 import ShippingPicker from '../ShippingPicker/ShippingPicker.jsx';
 import styles from './ListingGrid.module.css';
 
+/**
+ * Client-side pre-flight validation before a listing is sent to the eBay API.
+ * Returns an array of human-readable error strings, empty if valid.
+ */
+function validateListing(listing) {
+  const issues = [];
+  const isAuction = listing.listingType === 'Auction';
+
+  // ── Price ──────────────────────────────────────────────────────────────────
+  if (!isAuction) {
+    const price = parseFloat(listing.price);
+    if (!listing.price || isNaN(price) || price <= 0) {
+      issues.push('Price is required and must be greater than $0');
+    }
+  } else {
+    const start = parseFloat(listing.auctionStartPrice);
+    if (!listing.auctionStartPrice || isNaN(start) || start <= 0) {
+      issues.push('Auction start price is required and must be greater than $0');
+    }
+    if (!listing.auctionDays) {
+      issues.push('Auction duration is required');
+    }
+  }
+
+  // ── Package dimensions / weight — required when a shipping method is set ──
+  const hasShippingMethod = !!listing.shippingService;
+  const dims    = ['length', 'width', 'height'];
+  const missing = dims.filter((d) => !listing[d] || parseFloat(listing[d]) <= 0);
+
+  if (hasShippingMethod) {
+    if (missing.length > 0) {
+      issues.push(`Length, width, and height are required when a shipping method is selected (missing: ${missing.join(', ')})`);
+    }
+    if (!listing.weightLbs && !listing.weightOz) {
+      issues.push('Package weight is required when a shipping method is selected (enter lbs and/or oz)');
+    }
+  } else if (missing.length > 0 && missing.length < dims.length) {
+    // Partially filled without a shipping method — still flag incomplete dims
+    issues.push(`Package dimensions incomplete — please fill in: ${missing.join(', ')}`);
+  }
+
+  return issues;
+}
+
 const CONDITIONS = ['New', 'Used'];
 
 // These three eBay category IDs always use the trading-card condition system
@@ -216,6 +260,13 @@ export default function ListingGrid({
     const listing = listings.find((l) => l.id === id);
     if (!listing || !accessToken) return;
 
+    // Client-side validation before hitting the API
+    const issues = validateListing(listing);
+    if (issues.length) {
+      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'error', statusError: issues.join(' · ') }));
+      return;
+    }
+
     onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'submitting', statusError: '' }));
 
     try {
@@ -246,6 +297,13 @@ export default function ListingGrid({
     // Post sequentially to avoid hammering the API
     const supabaseToken = await getAccessToken();
     for (const listing of pending) {
+      // Client-side validation before hitting the API
+      const issues = validateListing(listing);
+      if (issues.length) {
+        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'error', statusError: issues.join(' · ') }));
+        continue;
+      }
+
       try {
         const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
         onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'success', listingId }));
