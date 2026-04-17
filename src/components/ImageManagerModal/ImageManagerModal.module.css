@@ -169,6 +169,44 @@
   -webkit-box-orient: vertical;
 }
 
+/* ── Session-expired tile ────────────────────────────────────────────────── */
+
+.tileExpired {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fff8e1;
+  padding: 0.5rem;
+  gap: 0.2rem;
+}
+
+.tileExpiredIcon {
+  font-size: 1.6rem;
+  color: #e6a000;
+  line-height: 1;
+}
+
+.tileExpiredTitle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #b37700;
+  text-align: center;
+}
+
+.tileExpiredMsg {
+  font-size: 0.58rem;
+  color: #7a5200;
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
+}
+
 /* ── Main badge ──────────────────────────────────────────────────────────── */
 
 .mainBadge {

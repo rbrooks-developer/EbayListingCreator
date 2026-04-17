@@ -765,7 +765,15 @@ async function handleUploadImage(body, env) {
   const longMsg  = decodeEntities(text.match(/<LongMessage>(.*?)<\/LongMessage>/)?.[1] ?? '');
 
   if ((ack !== 'Success' && ack !== 'Warning') || !fullUrl) {
-    return err(longMsg || shortMsg || 'Image upload failed', 400, env);
+    const raw = longMsg || shortMsg || 'Image upload failed';
+    const isTokenExpiry = /IAF|token.*(expired|invalid)|expired.*token/i.test(raw);
+    return err(
+      isTokenExpiry
+        ? 'SESSION_EXPIRED: Your eBay session has expired. Remove this image and re-add it, or refresh the page to reconnect.'
+        : raw,
+      isTokenExpiry ? 401 : 400,
+      env
+    );
   }
 
   return ok({ url: fullUrl }, env);

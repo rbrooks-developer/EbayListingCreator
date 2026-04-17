@@ -37,6 +37,12 @@ function validateListing(listing) {
     }
   }
 
+  // ── Quantity ───────────────────────────────────────────────────────────────
+  const qty = parseInt(listing.quantity);
+  if (!listing.quantity || isNaN(qty) || qty < 1) {
+    issues.push('Quantity must be at least 1');
+  }
+
   // ── Package dimensions / weight — required when a shipping method is set ──
   const hasShippingMethod = !!listing.shippingService;
   const dims    = ['length', 'width', 'height'];
@@ -52,6 +58,12 @@ function validateListing(listing) {
   } else if (missing.length > 0 && missing.length < dims.length) {
     // Partially filled without a shipping method — still flag incomplete dims
     issues.push(`Package dimensions incomplete — please fill in: ${missing.join(', ')}`);
+  }
+
+  // ── Expired image sessions ─────────────────────────────────────────────────
+  const expiredCount = (listing.images ?? []).filter((img) => img.error?.startsWith('SESSION_EXPIRED')).length;
+  if (expiredCount > 0) {
+    issues.push(`${expiredCount} image${expiredCount > 1 ? 's have' : ' has'} an expired session — remove and re-add ${expiredCount > 1 ? 'them' : 'it'}, or refresh the page`);
   }
 
   return issues;

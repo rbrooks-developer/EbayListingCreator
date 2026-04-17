@@ -166,6 +166,12 @@ export default function ImageManagerModal({ images: initialImages, onChange, acc
               >
                 {img.status === 'uploading' ? (
                   <div className={styles.tileSpinner} aria-label="Uploading…" />
+                ) : img.status === 'error' && img.error?.startsWith('SESSION_EXPIRED') ? (
+                  <div className={styles.tileExpired}>
+                    <span className={styles.tileExpiredIcon}>⟳</span>
+                    <span className={styles.tileExpiredTitle}>Session expired</span>
+                    <span className={styles.tileExpiredMsg}>Remove this image and re-add it, or refresh the page to reconnect.</span>
+                  </div>
                 ) : img.status === 'error' ? (
                   <div className={styles.tileError} title={img.error}>
                     <span className={styles.tileErrorIcon}>!</span>
