@@ -60,6 +60,11 @@ function validateListing(listing) {
     issues.push(`Package dimensions incomplete — please fill in: ${missing.join(', ')}`);
   }
 
+  // ── Images ─────────────────────────────────────────────────────────────────
+  if (!listing.images || listing.images.length === 0) {
+    issues.push('At least 1 image is required');
+  }
+
   // ── Expired image sessions ─────────────────────────────────────────────────
   const expiredCount = (listing.images ?? []).filter((img) => img.error?.startsWith('SESSION_EXPIRED')).length;
   if (expiredCount > 0) {
