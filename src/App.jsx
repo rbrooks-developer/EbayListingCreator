@@ -29,6 +29,7 @@ import CheckoutNotice from './components/CheckoutNotice/CheckoutNotice.jsx';
 import PricingSection from './components/PricingSection/PricingSection.jsx';
 import UpgradeModal, { hasSeenUpgradePrompt, markUpgradePromptSeen } from './components/UpgradeModal/UpgradeModal.jsx';
 import SiteFooter from './components/SiteFooter/SiteFooter.jsx';
+import PromoBanner from './components/PromoBanner/PromoBanner.jsx';
 
 const SECTION_TITLES = [
   { id: 'pricing', title: 'Pricing — Create My Listings' },
@@ -232,6 +233,7 @@ function AppContent() {
       <SiteHeader onSignInClick={() => setAuthModalOpen(true)} />
 
       <main id="main-content">
+        <PromoBanner />
         <HomePage onSignInClick={() => setAuthModalOpen(true)} />
 
         <OAuthSection

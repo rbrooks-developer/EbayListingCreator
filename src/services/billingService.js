@@ -2,6 +2,24 @@ import { supabase } from './authService.js';
 
 const WORKER_URL = (import.meta.env.VITE_TOKEN_WORKER_URL ?? '').replace(/\/$/, '');
 
+/**
+ * Fetch the free tier's listing limit from tier_limits (public, no auth required).
+ * Returns the number (e.g. 20) or null on failure.
+ */
+export async function fetchFreeTierLimit() {
+  try {
+    const { data, error } = await supabase
+      .from('tier_limits')
+      .select('listings_per_month')
+      .eq('tier', 'free')
+      .single();
+    if (error || !data) return null;
+    return data.listings_per_month;
+  } catch {
+    return null;
+  }
+}
+
 async function getToken() {
   try {
     const { data: { session } } = await supabase.auth.getSession();
