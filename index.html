@@ -6,8 +6,8 @@
 
     <!-- ── Primary SEO ───────────────────────────────────────────────────── -->
     <title>eBay Listing Creator — Bulk List Items on eBay from Your Browser</title>
-    <meta name="description" content="Create and post eBay listings in bulk. Import from Excel or CSV, manage photos, fill item specifics, and post directly to eBay — one at a time or all at once. Free to use, no install required." />
-    <meta name="keywords" content="eBay listing creator, bulk eBay listings, eBay listing tool, eBay CSV import, create eBay listings, eBay seller tool" />
+    <meta name="description" content="Bulk create and post eBay listings directly from your browser. Import from Excel or CSV, upload images, fill item specifics, and post to eBay one at a time or all at once. Free forever, no credit card required." />
+    <meta name="keywords" content="bulk eBay listing tool, create multiple eBay listings at once, eBay lister from spreadsheet, eBay CSV import tool, eBay listing creator, post eBay listings in bulk, eBay seller tool free, eBay item specifics tool" />
     <link rel="canonical" href="https://createmylistings.com/" />
 
     <!-- ── Open Graph (Facebook, LinkedIn, iMessage, Slack previews) ─────── -->
@@ -15,7 +15,7 @@
     <meta property="og:url"         content="https://createmylistings.com/" />
     <meta property="og:site_name"   content="eBay Listing Creator" />
     <meta property="og:title"       content="eBay Listing Creator — Bulk List Items on eBay" />
-    <meta property="og:description" content="Import listings from a spreadsheet or add them manually, upload photos, and post directly to eBay — all from your browser. Free, no install required." />
+    <meta property="og:description" content="Bulk create and post eBay listings from your browser. Import from Excel or CSV, upload images, and post directly to eBay. Free forever, no credit card required." />
     <meta property="og:image"       content="https://createmylistings.com/og-image.png" />
     <meta property="og:image:width"  content="1200" />
     <meta property="og:image:height" content="630" />
@@ -24,7 +24,7 @@
     <!-- ── Twitter / X Card ─────────────────────────────────────────────── -->
     <meta name="twitter:card"        content="summary_large_image" />
     <meta name="twitter:title"       content="eBay Listing Creator — Bulk List Items on eBay" />
-    <meta name="twitter:description" content="Import listings from a spreadsheet or add them manually, upload photos, and post directly to eBay — all from your browser." />
+    <meta name="twitter:description" content="Bulk create and post eBay listings from your browser. Import from Excel or CSV, upload images, and post directly to eBay. Free forever, no credit card required." />
     <meta name="twitter:image"       content="https://createmylistings.com/og-image.png" />
 
     <!-- ── Favicon ──────────────────────────────────────────────────────── -->
@@ -186,6 +186,41 @@
       ]
     }
     </script>
+    <!-- ── HowTo Structured Data (JSON-LD) ─────────────────────────────── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to Bulk Create eBay Listings",
+      "description": "Create and post multiple eBay listings at once from your browser using eBay Listing Creator. No install required.",
+      "totalTime": "PT5M",
+      "estimatedCost": { "@type": "MonetaryAmount", "currency": "USD", "value": "0" },
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "Connect to eBay",
+          "text": "Enter your ZIP code and click Connect Your eBay Account. You will be redirected to eBay to authorize the app. Once approved, your categories, shipping services, and fulfillment policies are downloaded automatically.",
+          "url": "https://createmylistings.com/#oauth"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "Build Your Listings",
+          "text": "Add listing rows manually or import an Excel or CSV spreadsheet. Select a category, fill in item specifics, upload images using the Image Manager, choose a shipping policy and method, then set your price and listing format.",
+          "url": "https://createmylistings.com/#listings"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Post to eBay",
+          "text": "Review your listings in the grid, then click Post to eBay on any row or use Post All to submit every ready listing at once. Each row updates in real time showing the eBay listing ID on success.",
+          "url": "https://createmylistings.com/#listings"
+        }
+      ]
+    }
+    </script>
+
   </head>
   <body>
     <div id="root"></div>
