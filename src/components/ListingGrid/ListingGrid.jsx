@@ -10,6 +10,7 @@ import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
 import TradingCardModal from '../TradingCardModal/TradingCardModal.jsx';
 import ImageManagerModal from '../ImageManagerModal/ImageManagerModal.jsx';
+import BulkImageModal from '../BulkImageModal/BulkImageModal.jsx';
 import ShippingPicker from '../ShippingPicker/ShippingPicker.jsx';
 import styles from './ListingGrid.module.css';
 
@@ -139,7 +140,8 @@ export default function ListingGrid({
   onOpenRulesManager,
 }) {
   const { getAccessToken } = useAuth();
-  const { refresh: refreshUsage } = useSubscription();
+  const { usage, refresh: refreshUsage } = useSubscription();
+  const maxImages = usage?.maxImages ?? 24;
 
   const [importErrors, setImportErrors] = useState([]);
   const [importStatus, setImportStatus] = useState('');
@@ -147,6 +149,7 @@ export default function ListingGrid({
   const [tcModalListingId, setTcModalListingId]     = useState(null);
   const [tcModalInitialType, setTcModalInitialType] = useState('');
   const [imageModalListingId, setImageModalListingId] = useState(null);
+  const [bulkImageOpen, setBulkImageOpen] = useState(false);
   const [isPostingAll, setIsPostingAll] = useState(false);
   // Set of categoryIds that have condition descriptors (trading card categories).
   // Pre-seeded with the 3 known TC parent IDs; API detection adds more (subcategories).
@@ -460,6 +463,11 @@ export default function ListingGrid({
             <button className={styles.btnOutline} onClick={onOpenRulesManager}>
               Rules{rules.length > 0 ? ` (${rules.length})` : ''}
             </button>
+            {hasListings && accessToken && (
+              <button className={styles.btnOutline} onClick={() => setBulkImageOpen(true)}>
+                Bulk Attach Images
+              </button>
+            )}
             {hasListings && accessToken && (() => {
               const pendingCount = listings.filter((l) => l.postStatus === 'new' && l.title && l.categoryId).length;
               return pendingCount > 0 ? (
@@ -601,6 +609,18 @@ export default function ListingGrid({
         />
       )}
 
+      {/* ── Bulk image modal ── */}
+      {bulkImageOpen && (
+        <BulkImageModal
+          listings={listings}
+          onChange={(updatedListings) => onChange(updatedListings)}
+          accessToken={accessToken}
+          sandbox={sandbox}
+          maxImages={maxImages}
+          onClose={() => setBulkImageOpen(false)}
+        />
+      )}
+
       {/* ── Image manager modal ── */}
       {imageModalListingId && (() => {
         const listing = listings.find((l) => l.id === imageModalListingId);
@@ -611,6 +631,7 @@ export default function ListingGrid({
             onChange={(images) => updateImages(imageModalListingId, images)}
             accessToken={accessToken}
             sandbox={sandbox}
+            maxImages={maxImages}
             onClose={() => setImageModalListingId(null)}
           />
         );

@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { uploadImage } from '../../services/ebayApi.js';
 import styles from './ImageManagerModal.module.css';
 
-const MAX_IMAGES = 24;
-
 /**
  * ImageManagerModal
  * Props:
@@ -11,9 +9,10 @@ const MAX_IMAGES = 24;
  *  onChange      — (images) => void
  *  accessToken   — string | null
  *  sandbox       — bool
+ *  maxImages     — number (from tier_limits, passed down from ListingGrid)
  *  onClose       — () => void
  */
-export default function ImageManagerModal({ images: initialImages, onChange, accessToken, sandbox, onClose }) {
+export default function ImageManagerModal({ images: initialImages, onChange, accessToken, sandbox, maxImages = 24, onClose }) {
   const [images, setImages] = useState(initialImages);
   const fileInputRef = useRef(null);
   const overlayRef = useRef(null);
@@ -46,7 +45,7 @@ export default function ImageManagerModal({ images: initialImages, onChange, acc
     e.target.value = '';
     if (!files.length) return;
 
-    const remaining = MAX_IMAGES - images.length;
+    const remaining = maxImages - images.length;
     const selected = files.slice(0, remaining);
 
     // Convert each file to a base64 data URL so previews survive page refreshes
@@ -126,7 +125,7 @@ export default function ImageManagerModal({ images: initialImages, onChange, acc
     setDragOverIndex(null);
   }
 
-  const atMax = images.length >= MAX_IMAGES;
+  const atMax = images.length >= maxImages;
 
   return (
     <div
@@ -143,7 +142,7 @@ export default function ImageManagerModal({ images: initialImages, onChange, acc
           <div>
             <h2 className={styles.title}>Images</h2>
             <p className={styles.subtitle}>
-              {images.length} / {MAX_IMAGES} · Drag to reorder · First image is the main image
+              {images.length} / {maxImages} · Drag to reorder · First image is the main image
             </p>
           </div>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
@@ -216,7 +215,7 @@ export default function ImageManagerModal({ images: initialImages, onChange, acc
           </div>
 
           {atMax && (
-            <p className={styles.maxNote}>Maximum of {MAX_IMAGES} images reached.</p>
+            <p className={styles.maxNote}>Maximum of {maxImages} images reached.</p>
           )}
 
           {images.length === 0 && (
