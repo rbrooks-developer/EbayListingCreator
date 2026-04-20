@@ -13,14 +13,21 @@ import styles from './BulkImageModal.module.css';
  *  onClose    — () => void
  */
 export default function BulkImageModal({ listings, onChange, accessToken, sandbox, maxImages = 24, onClose }) {
-  // Local copy — flushed to parent on Done
-  const [localListings, setLocalListings] = useState(
-    () => listings.map((l) => ({ ...l, images: l.images ?? [] }))
-  );
+  // Only track in-session changes — NOT a full copy of listings.
+  // localListings is derived on every render by merging the live `listings`
+  // prop with imageUpdates, so external edits (deletes, adds via ImageManagerModal)
+  // are always reflected when this modal opens or is open.
+  const [imageUpdates, setImageUpdates] = useState(() => new Map());
   const [imagePool, setImagePool] = useState([]);
   const [dragOverId, setDragOverId] = useState(null);
   const fileInputRef = useRef(null);
   const overlayRef = useRef(null);
+
+  // Derived — merges parent listings (always current) with in-session changes
+  const localListings = listings.map((l) => ({
+    ...l,
+    images: imageUpdates.has(l.id) ? imageUpdates.get(l.id) : (l.images ?? []),
+  }));
 
   // Close on Escape
   useEffect(() => {
@@ -38,11 +45,16 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
     if (e.target === overlayRef.current) handleDone();
   }
 
-  // ── Functional updater so async uploads never hit stale state ─────────────
+  // ── Functional updater — reads latest images for the listing, applies updater ─
   function updateListingImages(listingId, updater) {
-    setLocalListings((prev) =>
-      prev.map((l) => l.id !== listingId ? l : { ...l, images: updater(l.images) })
-    );
+    setImageUpdates((prev) => {
+      const next = new Map(prev);
+      const current = next.has(listingId)
+        ? next.get(listingId)
+        : (listings.find((l) => l.id === listingId)?.images ?? []);
+      next.set(listingId, updater(current));
+      return next;
+    });
   }
 
   // ── Add images to the pool ────────────────────────────────────────────────
