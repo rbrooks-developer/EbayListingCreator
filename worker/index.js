@@ -653,6 +653,7 @@ async function handleCreateListing(body, env) {
   // ── Increment usage counter on success ────────────────────────────────────
   if (userId) {
     await supabaseRpc('increment_listing_usage', { p_user_id: userId }, env).catch(() => {});
+    await supabaseRpc('increment_total_listings', { p_user_id: userId }, env).catch(() => {});
   }
 
   // Fetch updated usage to return alongside the listing ID
