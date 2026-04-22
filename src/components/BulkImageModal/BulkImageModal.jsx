@@ -20,9 +20,11 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
   const [imageUpdates, setImageUpdates] = useState(() => new Map());
   const [imagePool, setImagePool] = useState([]);
   const [dragOverId, setDragOverId] = useState(null);
+  const [nextRowId, setNextRowId] = useState(null); // briefly highlighted after a drop
   const fileInputRef = useRef(null);
   const overlayRef = useRef(null);
   const rowRefs = useRef(new Map());
+  const listingsContainerRef = useRef(null);
 
   // Derived — merges parent listings (always current) with in-session changes
   const localListings = listings.map((l) => ({
@@ -108,11 +110,17 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
     };
     updateListingImages(listingId, (imgs) => [...imgs, placeholder]);
 
-    // Scroll focus to the next listing row
+    // Scroll container to next row and briefly highlight it
     const currentIndex = localListings.findIndex((l) => l.id === listingId);
     const nextListing = localListings[currentIndex + 1];
     if (nextListing) {
-      rowRefs.current.get(nextListing.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setNextRowId(nextListing.id);
+      setTimeout(() => setNextRowId(null), 1200);
+      const nextEl = rowRefs.current.get(nextListing.id);
+      const container = listingsContainerRef.current;
+      if (nextEl && container) {
+        container.scrollTop = nextEl.offsetTop - container.offsetTop - 8;
+      }
     }
 
     // Fire upload
@@ -178,14 +186,14 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
             <div className={styles.panelHeader}>
               Listings <span className={styles.panelCount}>{localListings.length}</span>
             </div>
-            <div className={styles.listingRows}>
+            <div className={styles.listingRows} ref={listingsContainerRef}>
               {localListings.map((listing, i) => {
                 const isFull = listing.images.length >= maxImages;
                 const isOver = dragOverId === listing.id && !isFull;
                 return (
                   <div
                     key={listing.id}
-                    className={`${styles.listingRow} ${isOver ? styles.listingRowOver : ''} ${isFull ? styles.listingRowFull : ''}`}
+                    className={`${styles.listingRow} ${isOver ? styles.listingRowOver : ''} ${isFull ? styles.listingRowFull : ''} ${nextRowId === listing.id ? styles.listingRowNext : ''}`}
                     ref={(el) => { if (el) rowRefs.current.set(listing.id, el); else rowRefs.current.delete(listing.id); }}
                     onDragOver={(e) => { e.preventDefault(); if (!isFull) setDragOverId(listing.id); }}
                     onDragLeave={() => setDragOverId(null)}

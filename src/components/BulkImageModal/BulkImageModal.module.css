@@ -160,6 +160,17 @@
   opacity: 0.7;
 }
 
+.listingRowNext {
+  border-color: var(--ebay-blue);
+  animation: pulseNext 1.2s ease-out forwards;
+}
+
+@keyframes pulseNext {
+  0%   { background: rgba(54, 101, 243, 0.14); box-shadow: 0 0 0 3px rgba(54, 101, 243, 0.3); }
+  60%  { background: rgba(54, 101, 243, 0.08); box-shadow: 0 0 0 2px rgba(54, 101, 243, 0.15); }
+  100% { background: var(--bg-white); box-shadow: none; }
+}
+
 .listingMeta {
   display: flex;
   align-items: flex-start;
