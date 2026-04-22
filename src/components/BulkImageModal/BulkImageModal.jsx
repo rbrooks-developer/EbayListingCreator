@@ -22,6 +22,7 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
   const [dragOverId, setDragOverId] = useState(null);
   const fileInputRef = useRef(null);
   const overlayRef = useRef(null);
+  const rowRefs = useRef(new Map());
 
   // Derived — merges parent listings (always current) with in-session changes
   const localListings = listings.map((l) => ({
@@ -107,6 +108,13 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
     };
     updateListingImages(listingId, (imgs) => [...imgs, placeholder]);
 
+    // Scroll focus to the next listing row
+    const currentIndex = localListings.findIndex((l) => l.id === listingId);
+    const nextListing = localListings[currentIndex + 1];
+    if (nextListing) {
+      rowRefs.current.get(nextListing.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
     // Fire upload
     uploadImage(accessToken, poolItem.file, sandbox)
       .then((ebayUrl) => {
@@ -178,6 +186,7 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
                   <div
                     key={listing.id}
                     className={`${styles.listingRow} ${isOver ? styles.listingRowOver : ''} ${isFull ? styles.listingRowFull : ''}`}
+                    ref={(el) => { if (el) rowRefs.current.set(listing.id, el); else rowRefs.current.delete(listing.id); }}
                     onDragOver={(e) => { e.preventDefault(); if (!isFull) setDragOverId(listing.id); }}
                     onDragLeave={() => setDragOverId(null)}
                     onDrop={(e) => handleDrop(e, listing.id)}
