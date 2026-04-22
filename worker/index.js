@@ -652,8 +652,9 @@ async function handleCreateListing(body, env) {
 
   // ── Increment usage counter on success ────────────────────────────────────
   if (userId) {
-    await supabaseRpc('increment_listing_usage', { p_user_id: userId }, env).catch(() => {});
-    await supabaseRpc('increment_total_listings', { p_user_id: userId }, env).catch(() => {});
+    await supabaseRpc('increment_listing_usage', { p_user_id: userId }, env).catch((e) => console.error('[usage]', e));
+    const statsRes = await supabaseRpc('increment_total_listings', { p_user_id: userId }, env).catch((e) => { console.error('[stats]', e); return null; });
+    if (statsRes && !statsRes.ok) console.error('[stats] non-ok', statsRes.status, JSON.stringify(statsRes.data));
   }
 
   // Fetch updated usage to return alongside the listing ID
