@@ -73,7 +73,7 @@ export default function ImageManagerModal({ images: initialImages, onChange, acc
           const ebayUrl = await uploadImage(accessToken, selected[i], sandbox);
           updateImages((prev) =>
             prev.map((img) =>
-              img.id !== ph.id ? img : { ...img, ebayUrl, status: 'ready' }
+              img.id !== ph.id ? img : { ...img, ebayUrl, status: 'ready', previewUrl: '' }
             )
           );
         } catch (err) {

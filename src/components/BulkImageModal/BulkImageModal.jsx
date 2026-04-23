@@ -128,7 +128,7 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
       .then((ebayUrl) => {
         updateListingImages(listingId, (imgs) =>
           imgs.map((img) =>
-            img.id !== poolItem.id ? img : { ...img, ebayUrl, status: 'ready' }
+            img.id !== poolItem.id ? img : { ...img, ebayUrl, status: 'ready', previewUrl: '' }
           )
         );
       })
