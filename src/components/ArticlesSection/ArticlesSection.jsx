@@ -20,8 +20,9 @@ export default function ArticlesSection() {
       .catch((e) => { console.error('[ArticlesSection]', e); setLoaded(true); });
   }, []);
 
-  // Hidden until loaded and at least one article exists
-  if (!loaded || articles.length === 0) return null;
+  // Always render the section so id="articles" exists in the DOM for anchor links.
+  // Hide content until loaded and at least one article exists.
+  if (!loaded || articles.length === 0) return <section id="articles" />;
 
   return (
     <section className={styles.section} id="articles">
