@@ -47,6 +47,10 @@
   cursor: pointer;
 }
 
+.brand:hover {
+  text-decoration: none;
+}
+
 .logo {
   font-size: 1.5rem;
   font-weight: 900;
