@@ -24,13 +24,13 @@ export default function SiteHeader({ onSignInClick, onSignOut }) {
         </div>
 
         <nav className={styles.nav} aria-label="Page sections">
-          <a href="#home">Home</a>
-          <a href="#oauth">Connect to eBay</a>
-          <a href="#listings">Listings</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#articles">Articles</a>
-          <a href="#faq">FAQ</a>
-          <a href="#contact">Contact</a>
+          <a href="/#home">Home</a>
+          <a href="/#oauth">Connect to eBay</a>
+          <a href="/#listings">Listings</a>
+          <a href="/#pricing">Pricing</a>
+          <a href="/#articles">Articles</a>
+          <a href="/#faq">FAQ</a>
+          <a href="/#contact">Contact</a>
         </nav>
 
         <div className={styles.authSlot}>
