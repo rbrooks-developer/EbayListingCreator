@@ -47,15 +47,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
-  text-decoration: none;
-  color: inherit;
-  transition: box-shadow 0.18s, transform 0.18s, border-color 0.18s;
-}
-
-.card:hover {
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
-  transform: translateY(-3px);
-  border-color: var(--ebay-blue);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 /* ── Image ───────────────────────────────────────────────────────────────── */
@@ -76,7 +68,6 @@
   transition: transform 0.25s;
 }
 
-.card:hover .image { transform: scale(1.04); }
 
 /* ── Body ────────────────────────────────────────────────────────────────── */
 
@@ -124,8 +115,14 @@
 .dot { opacity: 0.5; }
 
 .readMore {
+  display: inline-block;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--ebay-blue);
   margin-top: 0.25rem;
+  text-decoration: none;
+}
+
+.readMore:hover {
+  text-decoration: underline;
 }

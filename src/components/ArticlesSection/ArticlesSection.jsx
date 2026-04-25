@@ -29,13 +29,7 @@ export default function ArticlesSection() {
         <p className={styles.subheading}>Tips and guides from our partners at BabyLoveGrowth</p>
         <div className={styles.grid}>
           {articles.map((article) => (
-            <a
-              key={article.id}
-              href={article.article_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.card}
-            >
+            <div key={article.id} className={styles.card}>
               {article.image_url && (
                 <div className={styles.imageWrap}>
                   <img
@@ -62,9 +56,18 @@ export default function ArticlesSection() {
                     </span>
                   </div>
                 )}
-                <span className={styles.readMore}>Read more →</span>
+                {article.article_url && (
+                  <a
+                    href={article.article_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.readMore}
+                  >
+                    Read more →
+                  </a>
+                )}
               </div>
-            </a>
+            </div>
           ))}
         </div>
       </div>
