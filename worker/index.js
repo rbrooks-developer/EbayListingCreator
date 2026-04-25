@@ -1096,15 +1096,18 @@ async function handleArticleWebhook(request, env) {
     content_html,
     content_markdown,
     heroImageUrl,
+    heroImageAlt,
     jsonLd,
     faqJsonLd,
     languageCode,
+    lang,
     publicUrl,
+    keywords,
     createdAt,
   } = body;
 
-  if (!title || !publicUrl) {
-    return err('Missing required fields: title, publicUrl', 400, env);
+  if (!title) {
+    return err('Missing required field: title', 400, env);
   }
 
   // ── Upsert into Supabase (deduplicate by external_id) ────────────────────
@@ -1124,10 +1127,12 @@ async function handleArticleWebhook(request, env) {
         content_html:     content_html ?? null,
         content_markdown: content_markdown ?? null,
         image_url:        heroImageUrl ?? null,
-        article_url:      publicUrl,
+        image_alt:        heroImageAlt ?? null,
+        article_url:      publicUrl ?? null,
         json_ld:          jsonLd ?? null,
         faq_json_ld:      faqJsonLd ?? null,
-        language_code:    languageCode ?? 'en',
+        language_code:    languageCode ?? lang ?? 'en',
+        keywords:         keywords ?? null,
         published_at:     createdAt ?? new Date().toISOString(),
       }),
     },
