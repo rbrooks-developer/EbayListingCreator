@@ -103,6 +103,12 @@ async function handle(request, env) {
     return handleStripeWebhook(request, env);
   }
 
+  // Article webhook — auth via Bearer token in header, not body
+  if (path.endsWith('/webhook/articles')) {
+    if (request.method !== 'POST') return err('Method not allowed', 405, env);
+    return handleArticleWebhook(request, env);
+  }
+
   if (request.method !== 'POST') return err('Method not allowed', 405, env);
 
   let body;
@@ -1066,6 +1072,75 @@ const CONTACT_ADDRESSES = {
   question:   'info@createmylistings.com',
   suggestion: 'suggestions@createmylistings.com',
 };
+
+// ── /webhook/articles ─────────────────────────────────────────────────────────
+
+async function handleArticleWebhook(request, env) {
+  // ── Authenticate via Bearer token ─────────────────────────────────────────
+  const authHeader = request.headers.get('Authorization') ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token || token !== env.ARTICLE_WEBHOOK_SECRET) {
+    return err('Unauthorized', 401, env);
+  }
+
+  // ── Parse body ────────────────────────────────────────────────────────────
+  let body;
+  try { body = await request.json(); }
+  catch { return err('Invalid JSON body', 400, env); }
+
+  const {
+    id,
+    title,
+    slug,
+    metaDescription,
+    content_html,
+    content_markdown,
+    heroImageUrl,
+    jsonLd,
+    faqJsonLd,
+    languageCode,
+    publicUrl,
+    createdAt,
+  } = body;
+
+  if (!title || !publicUrl) {
+    return err('Missing required fields: title, publicUrl', 400, env);
+  }
+
+  // ── Upsert into Supabase (deduplicate by external_id) ────────────────────
+  const res = await supabaseFetch(
+    '/articles?on_conflict=external_id',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify({
+        external_id:      id ?? null,
+        title,
+        slug:             slug ?? null,
+        excerpt:          metaDescription ?? null,
+        content_html:     content_html ?? null,
+        content_markdown: content_markdown ?? null,
+        image_url:        heroImageUrl ?? null,
+        article_url:      publicUrl,
+        json_ld:          jsonLd ?? null,
+        faq_json_ld:      faqJsonLd ?? null,
+        language_code:    languageCode ?? 'en',
+        published_at:     createdAt ?? new Date().toISOString(),
+      }),
+    },
+    env
+  );
+
+  if (!res.ok) {
+    console.error('[articles webhook] supabase error', res.status, JSON.stringify(res.data));
+    return err('Failed to store article', 500, env);
+  }
+
+  return ok({ received: true }, env);
+}
 
 async function handleContact({ type, name, email, subject, message, honeypot }, env) {
   // Honeypot: bots fill hidden fields, humans don't
