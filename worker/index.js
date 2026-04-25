@@ -1128,7 +1128,7 @@ async function handleArticleWebhook(request, env) {
         content_markdown: content_markdown ?? null,
         image_url:        heroImageUrl ?? null,
         image_alt:        heroImageAlt ?? null,
-        article_url:      publicUrl ?? null,
+        article_url:      publicUrl ?? (slug ? `https://createmylistings.com/articles/${slug}` : null),
         json_ld:          jsonLd ?? null,
         faq_json_ld:      faqJsonLd ?? null,
         language_code:    languageCode ?? lang ?? 'en',

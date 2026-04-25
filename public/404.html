@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      // GitHub Pages SPA redirect — preserves the path so React Router can handle it
+      var path = window.location.pathname;
+      sessionStorage.setItem('spa_redirect', path);
+      window.location.replace('/');
+    </script>
+  </head>
+  <body></body>
+</html>

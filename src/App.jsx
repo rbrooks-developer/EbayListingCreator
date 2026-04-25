@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 import { SubscriptionProvider, useSubscription } from './contexts/SubscriptionContext.jsx';
@@ -31,6 +32,7 @@ import UpgradeModal, { hasSeenUpgradePrompt, markUpgradePromptSeen } from './com
 import SiteFooter from './components/SiteFooter/SiteFooter.jsx';
 import PromoBanner from './components/PromoBanner/PromoBanner.jsx';
 import ArticlesSection from './components/ArticlesSection/ArticlesSection.jsx';
+import ArticlePage from './components/ArticlePage/ArticlePage.jsx';
 
 const SECTION_TITLES = [
   { id: 'pricing', title: 'Pricing — Create My Listings' },
@@ -225,6 +227,38 @@ function AppContent() {
     sessionStorage.removeItem('ebay_postal_code');
   }
 
+  return (
+    <Routes>
+      <Route path="/articles/:slug" element={<ArticlePage />} />
+      <Route path="*" element={<MainLayout
+        pageTitle={pageTitle}
+        authModalOpen={authModalOpen}
+        setAuthModalOpen={setAuthModalOpen}
+        upgradeModalOpen={upgradeModalOpen}
+        setUpgradeModalOpen={setUpgradeModalOpen}
+        connectionData={connectionData}
+        accessToken={accessToken}
+        isExchanging={isExchanging}
+        exchangeError={exchangeError}
+        handleDisconnect={handleDisconnect}
+        listings={listings}
+        setListings={setListings}
+        rules={rules}
+        setRules={setRules}
+        rulesOpen={rulesOpen}
+        setRulesOpen={setRulesOpen}
+        aspectsCache={aspectsCache}
+      />} />
+    </Routes>
+  );
+}
+
+function MainLayout({
+  pageTitle, authModalOpen, setAuthModalOpen,
+  upgradeModalOpen, setUpgradeModalOpen,
+  connectionData, accessToken, isExchanging, exchangeError, handleDisconnect,
+  listings, setListings, rules, setRules, rulesOpen, setRulesOpen, aspectsCache,
+}) {
   return (
     <>
       <Helmet>

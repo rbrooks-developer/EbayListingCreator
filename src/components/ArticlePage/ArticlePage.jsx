@@ -1,0 +1,108 @@
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import { supabase } from '../../services/authService.js';
+import SiteHeader from '../SiteHeader/SiteHeader.jsx';
+import SiteFooter from '../SiteFooter/SiteFooter.jsx';
+import styles from './ArticlePage.module.css';
+
+export default function ArticlePage() {
+  const { slug } = useParams();
+  const [article, setArticle] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    setNotFound(false);
+    supabase
+      .from('articles')
+      .select('id, title, slug, excerpt, content_html, image_url, image_alt, published_at, json_ld, faq_json_ld')
+      .eq('slug', slug)
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data) { setNotFound(true); }
+        else { setArticle(data); }
+        setLoading(false);
+      });
+  }, [slug]);
+
+  return (
+    <>
+      <SiteHeader onSignInClick={() => {}} />
+
+      <main className={styles.main}>
+        {loading && (
+          <div className={styles.loading}>
+            <div className={styles.spinner} />
+          </div>
+        )}
+
+        {!loading && notFound && (
+          <div className={styles.notFound}>
+            <h1>Article not found</h1>
+            <p>This article may have been removed or the URL is incorrect.</p>
+            <Link to="/" className={styles.backLink}>← Back to home</Link>
+          </div>
+        )}
+
+        {!loading && article && (
+          <>
+            <Helmet>
+              <title>{article.title} — Create My Listings</title>
+              <meta name="description" content={article.excerpt ?? ''} />
+              {article.json_ld && (
+                <script type="application/ld+json">
+                  {JSON.stringify(article.json_ld)}
+                </script>
+              )}
+              {article.faq_json_ld && (
+                <script type="application/ld+json">
+                  {JSON.stringify(article.faq_json_ld)}
+                </script>
+              )}
+            </Helmet>
+
+            <article className={styles.article}>
+              <div className={styles.articleInner}>
+
+                {/* Back link */}
+                <Link to="/" className={styles.backLink}>← Back to home</Link>
+
+                {/* Hero image */}
+                {article.image_url && (
+                  <div className={styles.heroWrap}>
+                    <img
+                      src={article.image_url}
+                      alt={article.image_alt || article.title}
+                      className={styles.heroImg}
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                )}
+
+                {/* Title + date */}
+                <h1 className={styles.title}>{article.title}</h1>
+                {article.published_at && (
+                  <p className={styles.date}>
+                    {new Date(article.published_at).toLocaleDateString('en-US', {
+                      month: 'long', day: 'numeric', year: 'numeric',
+                    })}
+                  </p>
+                )}
+
+                {/* Article body */}
+                <div
+                  className={styles.content}
+                  dangerouslySetInnerHTML={{ __html: article.content_html }}
+                />
+              </div>
+            </article>
+          </>
+        )}
+      </main>
+
+      <SiteFooter />
+    </>
+  );
+}
