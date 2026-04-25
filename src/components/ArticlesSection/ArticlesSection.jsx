@@ -43,6 +43,8 @@ export default function ArticlesSection() {
                     alt={article.title}
                     className={styles.image}
                     loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => { e.currentTarget.closest(`.${styles.imageWrap}`).style.display = 'none'; }}
                   />
                 </div>
               )}
