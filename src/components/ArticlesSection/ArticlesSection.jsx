@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { supabase } from '../../services/authService.js';
 import styles from './ArticlesSection.module.css';
 
@@ -10,7 +9,7 @@ export default function ArticlesSection() {
   useEffect(() => {
     supabase
       .from('articles')
-      .select('id, title, slug, excerpt, image_url, published_at')
+      .select('id, title, excerpt, image_url, article_url, published_at')
       .order('published_at', { ascending: false })
       .then(({ data, error }) => {
         if (error) console.error('[ArticlesSection]', error);
@@ -27,7 +26,6 @@ export default function ArticlesSection() {
     <section className={styles.section} id="articles">
       <div className={styles.inner}>
         <h2 className={styles.heading}>Featured Articles</h2>
-        <p className={styles.subheading}>Tips and guides from our partners at BabyLoveGrowth</p>
         <div className={styles.grid}>
           {articles.map((article) => (
             <div key={article.id} className={styles.card}>
@@ -57,10 +55,15 @@ export default function ArticlesSection() {
                     </span>
                   </div>
                 )}
-                {article.slug && (
-                  <Link to={`/articles/${article.slug}`} className={styles.readMore}>
+                {article.article_url && (
+                  <a
+                    href={article.article_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.readMore}
+                  >
                     Read more →
-                  </Link>
+                  </a>
                 )}
               </div>
             </div>
