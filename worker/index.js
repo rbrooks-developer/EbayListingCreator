@@ -1070,7 +1070,7 @@ async function handleStripeWebhook(request, env) {
 
 const CONTACT_ADDRESSES = {
   question:   'info@createmylistings.com',
-  suggestion: 'suggestions@createmylistings.com',
+  suggestion: 'info@createmylistings.com',
 };
 
 // ── /webhook/articles ─────────────────────────────────────────────────────────

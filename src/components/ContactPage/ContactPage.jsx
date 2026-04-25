@@ -235,7 +235,7 @@ export default function ContactPage() {
 
             <ContactForm
               type="suggestion"
-              emailAddress="suggestions@createmylistings.com"
+              emailAddress="info@createmylistings.com"
               buttonLabel="Send Suggestion →"
               placeholder="Suggestion"
             />
