@@ -13,7 +13,7 @@ export default function SiteHeader({ onSignInClick, onSignOut }) {
     <header className={styles.header}>
       <a href="#main-content" className={styles.skipLink}>Skip to main content</a>
       <div className={styles.inner}>
-        <div className={styles.brand}>
+        <a href="/#home" className={styles.brand} aria-label="Create My Listings — Home">
           <span className={styles.logo} aria-hidden="true">
             <span className={styles.logoE}>e</span>
             <span className={styles.logoB}>B</span>
@@ -21,7 +21,7 @@ export default function SiteHeader({ onSignInClick, onSignOut }) {
             <span className={styles.logoY}>y</span>
           </span>
           <span className={styles.appName}>Listing Creator</span>
-        </div>
+        </a>
 
         <nav className={styles.nav} aria-label="Page sections">
           <a href="/#home">Home</a>
