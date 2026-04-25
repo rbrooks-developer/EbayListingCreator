@@ -21,3 +21,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </HelmetProvider>
   </React.StrictMode>
 );
+
+// SPAs lose native hash scrolling — manually scroll to the anchor after React paints
+if (window.location.hash) {
+  const hash = window.location.hash;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+}
