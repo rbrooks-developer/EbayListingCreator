@@ -9,13 +9,14 @@ export default function ArticlesSection() {
   useEffect(() => {
     supabase
       .from('articles')
-      .select('id, title, excerpt, image_url, article_url, author, published_at')
+      .select('id, title, excerpt, image_url, article_url, published_at')
       .order('published_at', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error('[ArticlesSection]', error);
         setArticles(data ?? []);
         setLoaded(true);
       })
-      .catch(() => setLoaded(true));
+      .catch((e) => { console.error('[ArticlesSection]', e); setLoaded(true); });
   }, []);
 
   // Hidden until loaded and at least one article exists
@@ -50,17 +51,15 @@ export default function ArticlesSection() {
                 {article.excerpt && (
                   <p className={styles.excerpt}>{article.excerpt}</p>
                 )}
-                <div className={styles.meta}>
-                  {article.author && <span className={styles.author}>{article.author}</span>}
-                  {article.author && article.published_at && <span className={styles.dot}>·</span>}
-                  {article.published_at && (
+                {article.published_at && (
+                  <div className={styles.meta}>
                     <span className={styles.date}>
                       {new Date(article.published_at).toLocaleDateString('en-US', {
                         month: 'short', day: 'numeric', year: 'numeric',
                       })}
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
                 <span className={styles.readMore}>Read more →</span>
               </div>
             </a>
