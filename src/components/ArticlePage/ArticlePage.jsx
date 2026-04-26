@@ -64,6 +64,42 @@ export default function ArticlePage() {
             <Helmet>
               <title>{article.title} — Create My Listings</title>
               <meta name="description" content={article.excerpt ?? ''} />
+
+              {/* Canonical */}
+              <link rel="canonical" href={`https://createmylistings.com/articles/${article.slug}`} />
+
+              {/* Open Graph */}
+              <meta property="og:type"        content="article" />
+              <meta property="og:url"         content={`https://createmylistings.com/articles/${article.slug}`} />
+              <meta property="og:site_name"   content="Create My Listings" />
+              <meta property="og:title"       content={article.title} />
+              <meta property="og:description" content={article.excerpt ?? ''} />
+              {article.image_url && <meta property="og:image" content={article.image_url} />}
+              {article.published_at && <meta property="article:published_time" content={article.published_at} />}
+
+              {/* Twitter / X */}
+              <meta name="twitter:card"        content="summary_large_image" />
+              <meta name="twitter:title"       content={article.title} />
+              <meta name="twitter:description" content={article.excerpt ?? ''} />
+              {article.image_url && <meta name="twitter:image" content={article.image_url} />}
+
+              {/* Article structured data */}
+              <script type="application/ld+json">{JSON.stringify({
+                '@context': 'https://schema.org',
+                '@type': 'BlogPosting',
+                headline: article.title,
+                description: article.excerpt ?? '',
+                image: article.image_url ?? undefined,
+                datePublished: article.published_at ?? undefined,
+                url: `https://createmylistings.com/articles/${article.slug}`,
+                publisher: {
+                  '@type': 'Organization',
+                  name: 'Create My Listings',
+                  url: 'https://createmylistings.com',
+                },
+              })}</script>
+
+              {/* BabyLoveGrowth-supplied structured data */}
               {article.json_ld && (
                 <script type="application/ld+json">
                   {JSON.stringify(article.json_ld)}
