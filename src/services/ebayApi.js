@@ -140,33 +140,38 @@ export async function fetchUserInfo(accessToken, sandbox = false) {
 // ── Categories ────────────────────────────────────────────────────────────────
 
 export async function fetchCategories(accessToken, marketplaceId = 'EBAY_US', sandbox = false) {
-  const baseUrl = sandbox ? SANDBOX_TAXONOMY_URL : EBAY_TAXONOMY_URL;
-
-  const treeData = await ebayGet(
-    `${baseUrl}/get_default_category_tree_id?marketplace_id=${marketplaceId}`,
-    accessToken
-  );
-  const { categoryTreeId } = treeData;
-
-  const tree = await ebayGet(`${baseUrl}/category_tree/${categoryTreeId}`, accessToken);
-
-  const categories = [];
-  function walk(node, pathParts = []) {
-    const name = node.category?.categoryName ?? '';
-    const id   = node.category?.categoryId   ?? '';
-    const path = [...pathParts, name];
-    if (!node.childCategoryTreeNodes?.length) {
-      categories.push({ categoryId: id, categoryName: name, fullPath: path.join(' > ') });
-    } else {
-      node.childCategoryTreeNodes.forEach((child) => walk(child, path));
+  try {
+    const baseUrl = sandbox ? SANDBOX_TAXONOMY_URL : EBAY_TAXONOMY_URL;
+    const treeData = await ebayGet(
+      `${baseUrl}/get_default_category_tree_id?marketplace_id=${marketplaceId}`,
+      accessToken
+    );
+    const { categoryTreeId } = treeData;
+    const tree = await ebayGet(`${baseUrl}/category_tree/${categoryTreeId}`, accessToken);
+    const categories = [];
+    function walk(node, pathParts = []) {
+      const name = node.category?.categoryName ?? '';
+      const id   = node.category?.categoryId   ?? '';
+      const path = [...pathParts, name];
+      if (!node.childCategoryTreeNodes?.length) {
+        categories.push({ categoryId: id, categoryName: name, fullPath: path.join(' > ') });
+      } else {
+        node.childCategoryTreeNodes.forEach((child) => walk(child, path));
+      }
+    }
+    if (tree.rootCategoryNode) {
+      (tree.rootCategoryNode.childCategoryTreeNodes ?? []).forEach((child) => walk(child, []));
+    }
+    return { categories, categoryTreeId };
+  } catch {
+    // eBay unavailable — silently fall back to Supabase cache
+    try {
+      const data = await workerPost('ebay/categories', {});
+      return { categories: data.categories ?? [], categoryTreeId: data.categoryTreeId ?? null };
+    } catch {
+      return { categories: [], categoryTreeId: null };
     }
   }
-  // Skip the root node itself — start from its children so "Root >" is not in every path
-  if (tree.rootCategoryNode) {
-    (tree.rootCategoryNode.childCategoryTreeNodes ?? []).forEach((child) => walk(child, []));
-  }
-
-  return { categories, categoryTreeId };
 }
 
 // ── Shipping services ─────────────────────────────────────────────────────────
@@ -193,9 +198,7 @@ export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_U
       `${baseUrl}/shipping/marketplace/${marketplaceId}/get_shipping_services`,
       accessToken
     );
-
     const ALLOWED_CARRIERS = new Set(['USPS', 'UPS', 'FEDEX']);
-
     const services = (data.shippingServices ?? [])
       .filter((svc) => {
         if (!svc.validForSellingFlow) return false;
@@ -217,10 +220,15 @@ export async function fetchShippingServices(accessToken, marketplaceId = 'EBAY_U
         maxShippingTime:  svc.shippingTimeMax ?? svc.maxShippingTime ?? null,
       }))
       .sort((a, b) => a.serviceName.localeCompare(b.serviceName));
-
     return services.length > 0 ? services : FALLBACK_SHIPPING_SERVICES;
   } catch {
-    return FALLBACK_SHIPPING_SERVICES;
+    // eBay unavailable — silently fall back to Supabase cache
+    try {
+      const data = await workerPost('ebay/shipping', {});
+      return data.services?.length > 0 ? data.services : FALLBACK_SHIPPING_SERVICES;
+    } catch {
+      return FALLBACK_SHIPPING_SERVICES;
+    }
   }
 }
 

@@ -178,6 +178,13 @@ function AppContent() {
       const token = await exchangeCodeForTokens(code, sandbox);
       setAccessToken(token);
 
+      // Fire-and-forget: keep Supabase cache fresh for fallback when eBay is down
+      fetch(`${import.meta.env.VITE_TOKEN_WORKER_URL?.replace(/\/$/, '')}/ebay/sync`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ token, sandbox }),
+      }).catch(() => {});
+
       const [userInfo, userLoc, categoryResult, shippingServices, fulfillmentPolicies] = await Promise.all([
         fetchUserInfo(token, sandbox),
         fetchUserLocation(token, sandbox).catch(() => ({ location: '', postalCode: '' })),

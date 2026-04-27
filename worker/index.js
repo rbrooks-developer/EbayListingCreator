@@ -122,6 +122,9 @@ async function handle(request, env) {
   if (path.endsWith('/upload-image'))     return handleUploadImage(body, env);
   if (path.endsWith('/user-location'))    return handleUserLocation(body, env);
   if (path.endsWith('/contact'))          return handleContact(body, env);
+  if (path.endsWith('/ebay/sync'))        return handleEbaySync(body, env);
+  if (path.endsWith('/ebay/categories'))  return handleEbayCategories(body, env);
+  if (path.endsWith('/ebay/shipping'))    return handleEbayShipping(body, env);
   if (path.endsWith('/billing/usage'))    return handleBillingUsage(body, env);
   if (path.endsWith('/billing/checkout')) return handleBillingCheckout(body, env);
   if (path.endsWith('/billing/portal'))   return handleBillingPortal(body, env);
@@ -276,8 +279,11 @@ async function handleExchange(body, env) {
     body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: ruName }),
   });
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) return err(data.error_description || data.error || `eBay ${res.status}`, res.status, env);
+  const rawText = await res.text();
+  console.log('[exchange] eBay status:', res.status, 'body:', rawText.slice(0, 500));
+  let data = {};
+  try { data = JSON.parse(rawText); } catch {}
+  if (!res.ok) return err(data.error_description || data.error || `eBay ${res.status}: ${rawText.slice(0, 200)}`, res.status, env);
   return ok(data, env);
 }
 
@@ -1064,6 +1070,173 @@ async function handleStripeWebhook(request, env) {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+// ── /ebay/categories ─────────────────────────────────────────────────────────
+
+async function handleEbayCategories(body, env) {
+  const res = await supabaseFetch(
+    '/ebay_categories?marketplace_id=eq.EBAY_US&select=category_id,category_name,full_path&order=full_path.asc&limit=20000',
+    { headers: { Range: '0-19999' } }, env
+  );
+  if (!res.ok) return err('Failed to load categories', 500, env);
+
+  const metaRes = await supabaseFetch('/ebay_sync_meta?marketplace_id=eq.EBAY_US&select=category_tree_id', {}, env);
+  const categoryTreeId = Array.isArray(metaRes.data) ? metaRes.data[0]?.category_tree_id ?? null : null;
+
+  const categories = (Array.isArray(res.data) ? res.data : []).map((r) => ({
+    categoryId:   r.category_id,
+    categoryName: r.category_name,
+    fullPath:     r.full_path,
+  }));
+
+  return ok({ categories, categoryTreeId }, env);
+}
+
+// ── /ebay/shipping ────────────────────────────────────────────────────────────
+
+async function handleEbayShipping(body, env) {
+  const res = await supabaseFetch(
+    '/ebay_shipping_services?marketplace_id=eq.EBAY_US&select=service_code,carrier_code,service_name,service_types,shipping_category,min_shipping_time,max_shipping_time&order=service_name.asc',
+    {}, env
+  );
+  if (!res.ok) return err('Failed to load shipping services', 500, env);
+
+  const services = (Array.isArray(res.data) ? res.data : []).map((r) => ({
+    carrierCode:      r.carrier_code,
+    serviceCode:      r.service_code,
+    serviceName:      r.service_name,
+    serviceTypes:     r.service_types ?? [],
+    shippingCategory: r.shipping_category ?? '',
+    minShippingTime:  r.min_shipping_time ?? null,
+    maxShippingTime:  r.max_shipping_time ?? null,
+  }));
+
+  return ok({ services }, env);
+}
+
+// ── /ebay/sync ────────────────────────────────────────────────────────────────
+
+async function handleEbaySync({ token, sandbox = false }, env) {
+  if (!token)  return err('Missing token', 400, env);
+  if (sandbox) return ok({ synced: false, reason: 'sandbox' }, env);
+
+  // Check if already synced today
+  const metaRes = await supabaseFetch('/ebay_sync_meta?marketplace_id=eq.EBAY_US', {}, env);
+  if (metaRes.ok && Array.isArray(metaRes.data) && metaRes.data[0]?.last_synced_at) {
+    const lastDate = metaRes.data[0].last_synced_at.slice(0, 10);
+    const today    = new Date().toISOString().slice(0, 10);
+    if (lastDate === today) return ok({ synced: false, reason: 'already_synced_today' }, env);
+  }
+
+  const TAXONOMY = 'https://api.ebay.com/commerce/taxonomy/v1';
+  const METADATA  = 'https://api.ebay.com/sell/metadata/v1';
+
+  try {
+    // ── Categories ───────────────────────────────────────────────────────────
+    const treeIdRes = await fetch(
+      `${TAXONOMY}/get_default_category_tree_id?marketplace_id=EBAY_US`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!treeIdRes.ok) return err('eBay taxonomy unavailable', 502, env);
+
+    const { categoryTreeId } = await treeIdRes.json();
+
+    const treeRes = await fetch(
+      `${TAXONOMY}/category_tree/${categoryTreeId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!treeRes.ok) return err('eBay category tree unavailable', 502, env);
+
+    const treeData = await treeRes.json();
+
+    const categories = [];
+    function walk(node, path) {
+      const name = node.category?.categoryName ?? '';
+      const id   = node.category?.categoryId   ?? '';
+      if (!node.childCategoryTreeNodes?.length) {
+        categories.push({ marketplace_id: 'EBAY_US', category_id: id, category_name: name, full_path: path.join(' > '), updated_at: new Date().toISOString() });
+      } else {
+        node.childCategoryTreeNodes.forEach((child) => walk(child, [...path, name]));
+      }
+    }
+    (treeData.rootCategoryNode?.childCategoryTreeNodes ?? []).forEach((c) => walk(c, []));
+
+    // Batch upsert categories (500 per batch to stay within request limits)
+    const BATCH = 500;
+    for (let i = 0; i < categories.length; i += BATCH) {
+      const batch = categories.slice(i, i + BATCH);
+      const r = await supabaseFetch('/ebay_categories?on_conflict=marketplace_id,category_id', {
+        method:  'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body:    JSON.stringify(batch),
+      }, env);
+      if (!r.ok) {
+        console.error('[ebay/sync] category batch failed at', i, r.status, JSON.stringify(r.data));
+        return err('Failed to store categories', 500, env);
+      }
+    }
+
+    // ── Shipping services ────────────────────────────────────────────────────
+    let shippingCount = 0;
+    const svcRes = await fetch(
+      `${METADATA}/shipping/marketplace/EBAY_US/get_shipping_services`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (svcRes.ok) {
+      const svcData = await svcRes.json();
+      const ALLOWED = new Set(['USPS', 'UPS', 'FEDEX']);
+      const services = (svcData.shippingServices ?? [])
+        .filter((s) => {
+          if (!s.validForSellingFlow) return false;
+          if (s.internationalService)  return false;
+          if (!ALLOWED.has(s.shippingCarrier)) return false;
+          if ((s.shippingCategory ?? '').toLowerCase().includes('outside')) return false;
+          if ((s.description ?? s.shippingService ?? '').toLowerCase().includes('surepost')) return false;
+          return true;
+        })
+        .map((s) => ({
+          marketplace_id:    'EBAY_US',
+          service_code:      s.shippingService,
+          carrier_code:      s.shippingCarrier ?? '',
+          service_name:      s.description ?? s.shippingService,
+          service_types:     s.shippingCostTypes ?? [],
+          shipping_category: s.shippingCategory ?? '',
+          min_shipping_time: s.shippingTimeMin ?? s.minShippingTime ?? null,
+          max_shipping_time: s.shippingTimeMax ?? s.maxShippingTime ?? null,
+          updated_at:        new Date().toISOString(),
+        }));
+
+      if (services.length > 0) {
+        const r = await supabaseFetch('/ebay_shipping_services?on_conflict=marketplace_id,service_code', {
+          method:  'POST',
+          headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body:    JSON.stringify(services),
+        }, env);
+        if (r.ok) shippingCount = services.length;
+      }
+    }
+
+    // ── Update sync meta ─────────────────────────────────────────────────────
+    await supabaseFetch('/ebay_sync_meta?on_conflict=marketplace_id', {
+      method:  'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body:    JSON.stringify({
+        marketplace_id:   'EBAY_US',
+        last_synced_at:   new Date().toISOString(),
+        category_tree_id: String(categoryTreeId),
+        category_count:   categories.length,
+        shipping_count:   shippingCount,
+      }),
+    }, env);
+
+    console.log(`[ebay/sync] done — ${categories.length} categories, ${shippingCount} shipping services`);
+    return ok({ synced: true, categoryCount: categories.length, shippingCount }, env);
+
+  } catch (e) {
+    console.error('[ebay/sync] error:', e.message);
+    return err(`Sync failed: ${e.message}`, 502, env);
+  }
 }
 
 // ── /contact ──────────────────────────────────────────────────────────────────
