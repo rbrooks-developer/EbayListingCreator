@@ -301,17 +301,10 @@ export async function fetchConditionPolicies(accessToken, categoryId, marketplac
 
 // ── Category aspects ──────────────────────────────────────────────────────────
 
-export async function fetchAspectsForCategory(accessToken, categoryTreeId, categoryId, sandbox = false) {
-  const baseUrl = sandbox ? SANDBOX_TAXONOMY_URL : EBAY_TAXONOMY_URL;
-  const data = await ebayGet(
-    `${baseUrl}/category_tree/${categoryTreeId}/get_item_aspects_for_category?category_id=${categoryId}`,
-    accessToken
-  );
-
-  return (data.aspects ?? []).map((a) => ({
+function mapAspects(rawAspects) {
+  return (rawAspects ?? []).map((a) => ({
     aspectName:        a.localizedAspectName ?? '',
     aspectRequired:    a.aspectConstraint?.aspectRequired === true,
-    // If aspectRequired is explicitly true, treat as REQUIRED regardless of aspectUsage
     aspectUsage:       a.aspectConstraint?.aspectRequired === true
       ? 'REQUIRED'
       : (a.aspectConstraint?.aspectUsage ?? 'OPTIONAL'),
@@ -319,4 +312,30 @@ export async function fetchAspectsForCategory(accessToken, categoryTreeId, categ
     aspectCardinality: a.aspectConstraint?.itemToAspectCardinality ?? 'SINGLE',
     aspectValues:      (a.aspectValues ?? []).map((v) => v.localizedValue ?? ''),
   }));
+}
+
+export async function fetchAspectsForCategory(accessToken, categoryTreeId, categoryId, sandbox = false) {
+  const baseUrl = sandbox ? SANDBOX_TAXONOMY_URL : EBAY_TAXONOMY_URL;
+
+  try {
+    const data = await ebayGet(
+      `${baseUrl}/category_tree/${categoryTreeId}/get_item_aspects_for_category?category_id=${categoryId}`,
+      accessToken
+    );
+    const aspects = mapAspects(data.aspects);
+
+    // Fire-and-forget: cache to Supabase for future fallback (production only)
+    if (!sandbox && aspects.length > 0) {
+      workerPost('ebay/aspects/save', { categoryId, aspects }).catch(() => {});
+    }
+
+    return aspects;
+  } catch {
+    // eBay unavailable — try Supabase cache silently
+    try {
+      const cached = await workerPost('ebay/aspects/get', { categoryId });
+      if (Array.isArray(cached.aspects)) return cached.aspects;
+    } catch { /* ignore */ }
+    return [];
+  }
 }

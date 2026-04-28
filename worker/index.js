@@ -122,9 +122,11 @@ async function handle(request, env) {
   if (path.endsWith('/upload-image'))     return handleUploadImage(body, env);
   if (path.endsWith('/user-location'))    return handleUserLocation(body, env);
   if (path.endsWith('/contact'))          return handleContact(body, env);
-  if (path.endsWith('/ebay/sync'))        return handleEbaySync(body, env);
-  if (path.endsWith('/ebay/categories'))  return handleEbayCategories(body, env);
-  if (path.endsWith('/ebay/shipping'))    return handleEbayShipping(body, env);
+  if (path.endsWith('/ebay/sync'))           return handleEbaySync(body, env);
+  if (path.endsWith('/ebay/categories'))     return handleEbayCategories(body, env);
+  if (path.endsWith('/ebay/shipping'))       return handleEbayShipping(body, env);
+  if (path.endsWith('/ebay/aspects/get'))    return handleEbayAspectsGet(body, env);
+  if (path.endsWith('/ebay/aspects/save'))   return handleEbayAspectsSave(body, env);
   if (path.endsWith('/billing/usage'))    return handleBillingUsage(body, env);
   if (path.endsWith('/billing/checkout')) return handleBillingCheckout(body, env);
   if (path.endsWith('/billing/portal'))   return handleBillingPortal(body, env);
@@ -1237,6 +1239,52 @@ async function handleEbaySync({ token, sandbox = false }, env) {
     console.error('[ebay/sync] error:', e.message);
     return err(`Sync failed: ${e.message}`, 502, env);
   }
+}
+
+// ── /ebay/aspects/get ────────────────────────────────────────────────────────
+
+async function handleEbayAspectsGet({ categoryId, marketplaceId = 'EBAY_US' }, env) {
+  if (!categoryId) return err('Missing categoryId', 400, env);
+
+  const res = await supabaseFetch(
+    `/ebay_category_aspects?marketplace_id=eq.${encodeURIComponent(marketplaceId)}&category_id=eq.${encodeURIComponent(categoryId)}&select=aspects`,
+    {}, env
+  );
+
+  if (!res.ok || !Array.isArray(res.data) || res.data.length === 0) {
+    return ok({ aspects: null }, env);
+  }
+
+  return ok({ aspects: res.data[0].aspects ?? null }, env);
+}
+
+// ── /ebay/aspects/save ───────────────────────────────────────────────────────
+
+async function handleEbayAspectsSave({ categoryId, aspects, marketplaceId = 'EBAY_US' }, env) {
+  if (!categoryId) return err('Missing categoryId', 400, env);
+  if (!Array.isArray(aspects)) return err('aspects must be an array', 400, env);
+
+  const res = await supabaseFetch(
+    '/ebay_category_aspects?on_conflict=marketplace_id,category_id',
+    {
+      method:  'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({
+        marketplace_id: marketplaceId,
+        category_id:    categoryId,
+        aspects,
+        updated_at:     new Date().toISOString(),
+      }),
+    },
+    env
+  );
+
+  if (!res.ok) {
+    console.error('[ebay/aspects/save] failed', res.status, JSON.stringify(res.data));
+    return err('Failed to save aspects', 500, env);
+  }
+
+  return ok({ saved: true }, env);
 }
 
 // ── /contact ──────────────────────────────────────────────────────────────────
