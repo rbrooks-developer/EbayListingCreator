@@ -872,6 +872,7 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
           value={listing.listingType}
           onChange={(e) => field('listingType', e.target.value)}
           aria-label="Listing type"
+          disabled={!!listing.listingId}
         >
           {LISTING_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
