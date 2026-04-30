@@ -372,9 +372,11 @@ async function handleCreateListing(body, env) {
   if (!token)   return err('Missing "token"', 400, env);
   if (!listing) return err('Missing "listing"', 400, env);
 
-  // ── Usage check ───────────────────────────────────────────────────────────
+  const isRevision = !!listing.listingId;
+
+  // ── Usage check (new listings only) ──────────────────────────────────────
   let userId = null;
-  if (supabaseToken && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!isRevision && supabaseToken && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
     userId = await getSupabaseUserId(supabaseToken, env);
 
     if (userId) {
@@ -417,7 +419,9 @@ async function handleCreateListing(body, env) {
 
   const site        = SITE_MAP[marketplaceId] ?? SITE_MAP.EBAY_US;
   const isAuction   = listing.listingType === 'Auction';
-  const callName    = isAuction ? 'AddItem' : 'AddFixedPriceItem';
+  const callName    = isRevision
+    ? (isAuction ? 'ReviseItem' : 'ReviseFixedPriceItem')
+    : (isAuction ? 'AddItem'   : 'AddFixedPriceItem');
   const price       = isAuction ? (listing.auctionStartPrice || '0.99') : (listing.price || '0.00');
   const duration    = isAuction ? (DURATION_MAP[String(listing.auctionDays)] ?? 'Days_7') : 'GTC';
   const listingType = isAuction ? 'Chinese' : 'FixedPriceItem';
@@ -585,6 +589,7 @@ async function handleCreateListing(body, env) {
     <eBayAuthToken>${token}</eBayAuthToken>
   </RequesterCredentials>
   <Item>
+    ${isRevision ? `<ItemID>${xmlEscape(listing.listingId)}</ItemID>` : ''}
     <Title>${xmlEscape(listing.title)}</Title>
     <Description><![CDATA[${listing.description || listing.title}]]></Description>
     <PrimaryCategory>
@@ -664,16 +669,16 @@ async function handleCreateListing(body, env) {
     return err(msg, 400, env);
   }
 
-  // ── Increment usage counter on success ────────────────────────────────────
-  if (userId) {
+  // ── Increment usage counter on success (new listings only) ──────────────
+  if (!isRevision && userId) {
     await supabaseRpc('increment_listing_usage', { p_user_id: userId }, env).catch((e) => console.error('[usage]', e));
     const statsRes = await supabaseRpc('increment_total_listings', { p_user_id: userId }, env).catch((e) => { console.error('[stats]', e); return null; });
     if (statsRes && !statsRes.ok) console.error('[stats] non-ok', statsRes.status, JSON.stringify(statsRes.data));
   }
 
-  // Fetch updated usage to return alongside the listing ID
+  // Fetch updated usage to return alongside the listing ID (new listings only)
   let usageInfo = null;
-  if (userId) {
+  if (!isRevision && userId) {
     const billing = await getUserBilling(userId, env).catch(() => null);
     if (billing) {
       const limitRes = await supabaseFetch(

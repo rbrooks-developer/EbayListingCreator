@@ -287,13 +287,14 @@ export default function ListingGrid({
       return;
     }
 
+    const isRevision = !!listing.listingId;
     onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'submitting', statusError: '' }));
 
     try {
       const supabaseToken = await getAccessToken();
       const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
       onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'success', listingId }));
-      refreshUsage();
+      if (!isRevision) refreshUsage();
     } catch (e) {
       const errMsg = e.message === 'limit_reached'
         ? 'Monthly listing limit reached. Upgrade your plan to continue posting.'
@@ -704,6 +705,9 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
           <div className={styles.statusSuccess}>
             <span className={styles.statusBadge}>Listed</span>
             <span className={styles.statusId} title={listingId}>{listingId}</span>
+            <button className={styles.retryBtn} onClick={() => onPost(listing.id)} disabled={!canPost}>
+              Update
+            </button>
           </div>
         )}
         {postStatus === 'error' && (
