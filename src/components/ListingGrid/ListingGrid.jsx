@@ -293,7 +293,7 @@ export default function ListingGrid({
     try {
       const supabaseToken = await getAccessToken();
       const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
-      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'success', listingId }));
+      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: isRevision ? 'updated' : 'success', listingId }));
       if (!isRevision) refreshUsage();
     } catch (e) {
       const errMsg = e.message === 'limit_reached'
@@ -701,9 +701,9 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
             Posting…
           </div>
         )}
-        {postStatus === 'success' && (
+        {(postStatus === 'success' || postStatus === 'updated') && (
           <div className={styles.statusSuccess}>
-            <span className={styles.statusBadge}>Listed</span>
+            <span className={styles.statusBadge}>{postStatus === 'updated' ? 'Updated' : 'Listed'}</span>
             <span className={styles.statusId} title={listingId}>{listingId}</span>
             <button className={styles.retryBtn} onClick={() => onPost(listing.id)} disabled={!canPost}>
               Update
