@@ -229,6 +229,7 @@
 }
 
 .thumb {
+  position: relative;
   width: 36px;
   height: 36px;
   border-radius: 4px;
@@ -236,7 +237,39 @@
   border: 1px solid var(--border);
   flex-shrink: 0;
   background: var(--bg-light);
+  cursor: grab;
 }
+
+.thumb:active { cursor: grabbing; }
+
+.thumbDragOver {
+  border-color: var(--ebay-blue);
+  box-shadow: 0 0 0 2px rgba(54, 101, 243, 0.4);
+}
+
+.thumbRemove {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.65rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 0;
+  z-index: 1;
+}
+
+.thumb:hover .thumbRemove { opacity: 1; }
 
 .thumb img {
   width: 100%;

@@ -13,20 +13,17 @@ import styles from './BulkImageModal.module.css';
  *  onClose    — () => void
  */
 export default function BulkImageModal({ listings, onChange, accessToken, sandbox, maxImages = 24, onClose }) {
-  // Only track in-session changes — NOT a full copy of listings.
-  // localListings is derived on every render by merging the live `listings`
-  // prop with imageUpdates, so external edits (deletes, adds via ImageManagerModal)
-  // are always reflected when this modal opens or is open.
   const [imageUpdates, setImageUpdates] = useState(() => new Map());
   const [imagePool, setImagePool] = useState([]);
   const [dragOverId, setDragOverId] = useState(null);
-  const [nextRowId, setNextRowId] = useState(null); // briefly highlighted after a drop
+  const [nextRowId, setNextRowId] = useState(null);
+  const [thumbDragOverId, setThumbDragOverId] = useState(null); // `${listingId}:${imgId}`
   const fileInputRef = useRef(null);
   const overlayRef = useRef(null);
   const rowRefs = useRef(new Map());
   const listingsContainerRef = useRef(null);
 
-  // Derived — merges parent listings (always current) with in-session changes
+  // Derived — merges parent listings with in-session changes
   const localListings = listings.map((l) => ({
     ...l,
     images: imageUpdates.has(l.id) ? imageUpdates.get(l.id) : (l.images ?? []),
@@ -48,7 +45,7 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
     if (e.target === overlayRef.current) handleDone();
   }
 
-  // ── Functional updater — reads latest images for the listing, applies updater ─
+  // ── Functional updater ────────────────────────────────────────────────────
   function updateListingImages(listingId, updater) {
     setImageUpdates((prev) => {
       const next = new Map(prev);
@@ -56,6 +53,31 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
         ? next.get(listingId)
         : (listings.find((l) => l.id === listingId)?.images ?? []);
       next.set(listingId, updater(current));
+      return next;
+    });
+  }
+
+  // ── Remove an image from a listing ───────────────────────────────────────
+  function handleRemoveImage(listingId, imgId) {
+    updateListingImages(listingId, (imgs) => imgs.filter((img) => img.id !== imgId));
+  }
+
+  // ── Reorder thumbs via drag-and-drop ──────────────────────────────────────
+  function handleThumbDrop(e, listingId, targetImgId) {
+    e.preventDefault();
+    e.stopPropagation();
+    setThumbDragOverId(null);
+    const raw = e.dataTransfer.getData('application/x-thumb-reorder');
+    if (!raw) return;
+    const { listingId: srcListingId, imgId: srcImgId } = JSON.parse(raw);
+    if (srcListingId !== listingId || srcImgId === targetImgId) return;
+    updateListingImages(listingId, (imgs) => {
+      const srcIdx = imgs.findIndex((img) => img.id === srcImgId);
+      const dstIdx = imgs.findIndex((img) => img.id === targetImgId);
+      if (srcIdx === -1 || dstIdx === -1) return imgs;
+      const next = [...imgs];
+      const [moved] = next.splice(srcIdx, 1);
+      next.splice(dstIdx, 0, moved);
       return next;
     });
   }
@@ -83,10 +105,13 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
     setImagePool((prev) => [...prev, ...newItems]);
   }
 
-  // ── Drop image from pool onto a listing row ───────────────────────────────
+  // ── Drop pool image onto a listing row ────────────────────────────────────
   function handleDrop(e, listingId) {
     e.preventDefault();
     setDragOverId(null);
+
+    // Ignore if this was a thumb-reorder drop (already handled by thumb)
+    if (e.dataTransfer.types.includes('application/x-thumb-reorder')) return;
 
     const imageId = e.dataTransfer.getData('text/plain');
     const poolItem = imagePool.find((img) => img.id === imageId);
@@ -94,12 +119,10 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
 
     const listing = localListings.find((l) => l.id === listingId);
     if (!listing) return;
-    if (listing.images.length >= maxImages) return; // at capacity
+    if (listing.images.length >= maxImages) return;
 
-    // Remove from pool immediately
     setImagePool((prev) => prev.filter((img) => img.id !== imageId));
 
-    // Add uploading placeholder to the listing
     const placeholder = {
       id: poolItem.id,
       name: poolItem.name,
@@ -110,7 +133,7 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
     };
     updateListingImages(listingId, (imgs) => [...imgs, placeholder]);
 
-    // Scroll container to next row and briefly highlight it
+    // Scroll to next row and briefly highlight it
     const currentIndex = localListings.findIndex((l) => l.id === listingId);
     const nextListing = localListings[currentIndex + 1];
     if (nextListing) {
@@ -123,7 +146,6 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
       }
     }
 
-    // Fire upload
     uploadImage(accessToken, poolItem.file, sandbox)
       .then((ebayUrl) => {
         updateListingImages(listingId, (imgs) =>
@@ -167,7 +189,7 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
           <div>
             <h2 className={styles.title}>Bulk Attach Images</h2>
             <p className={styles.subtitle}>
-              Drag images from the right panel onto a listing row · First image is the main photo
+              Drag images from the right panel onto a listing · First image is the main photo · Drag thumbs to reorder
             </p>
           </div>
           <div className={styles.headerActions}>
@@ -195,7 +217,12 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
                     key={listing.id}
                     className={`${styles.listingRow} ${isOver ? styles.listingRowOver : ''} ${isFull ? styles.listingRowFull : ''} ${nextRowId === listing.id ? styles.listingRowNext : ''}`}
                     ref={(el) => { if (el) rowRefs.current.set(listing.id, el); else rowRefs.current.delete(listing.id); }}
-                    onDragOver={(e) => { e.preventDefault(); if (!isFull) setDragOverId(listing.id); }}
+                    onDragOver={(e) => {
+                      // Don't highlight row for thumb-reorder drags
+                      if (e.dataTransfer.types.includes('application/x-thumb-reorder')) return;
+                      e.preventDefault();
+                      if (!isFull) setDragOverId(listing.id);
+                    }}
                     onDragLeave={() => setDragOverId(null)}
                     onDrop={(e) => handleDrop(e, listing.id)}
                   >
@@ -215,28 +242,58 @@ export default function BulkImageModal({ listings, onChange, accessToken, sandbo
 
                     {listing.images.length > 0 && (
                       <div className={styles.thumbStrip}>
-                        {listing.images.slice(0, 8).map((img, idx) => (
-                          <div
-                            key={img.id}
-                            className={`${styles.thumb} ${idx === 0 ? styles.thumbMain : ''}`}
-                            title={idx === 0 ? `Main: ${img.name}` : img.name}
-                          >
-                            {img.status === 'uploading' ? (
-                              <div className={styles.thumbSpinner} />
-                            ) : img.status === 'error' ? (
-                              <div className={styles.thumbError} title={img.error}>!</div>
-                            ) : (
-                              <img
-                                src={img.ebayUrl || img.previewUrl}
-                                alt={img.name}
-                                draggable={false}
-                              />
-                            )}
-                          </div>
-                        ))}
-                        {listing.images.length > 8 && (
-                          <div className={styles.thumbMore}>+{listing.images.length - 8}</div>
-                        )}
+                        {listing.images.map((img, idx) => {
+                          const isDragTarget = thumbDragOverId === `${listing.id}:${img.id}`;
+                          return (
+                            <div
+                              key={img.id}
+                              className={`${styles.thumb} ${idx === 0 ? styles.thumbMain : ''} ${isDragTarget ? styles.thumbDragOver : ''}`}
+                              title={idx === 0 ? `Main: ${img.name}` : img.name}
+                              draggable={img.status !== 'uploading'}
+                              onDragStart={(e) => {
+                                e.stopPropagation();
+                                e.dataTransfer.setData(
+                                  'application/x-thumb-reorder',
+                                  JSON.stringify({ listingId: listing.id, imgId: img.id })
+                                );
+                                e.dataTransfer.effectAllowed = 'move';
+                              }}
+                              onDragOver={(e) => {
+                                if (!e.dataTransfer.types.includes('application/x-thumb-reorder')) return;
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setThumbDragOverId(`${listing.id}:${img.id}`);
+                              }}
+                              onDragLeave={(e) => {
+                                e.stopPropagation();
+                                setThumbDragOverId((prev) =>
+                                  prev === `${listing.id}:${img.id}` ? null : prev
+                                );
+                              }}
+                              onDrop={(e) => handleThumbDrop(e, listing.id, img.id)}
+                            >
+                              {img.status === 'uploading' ? (
+                                <div className={styles.thumbSpinner} />
+                              ) : img.status === 'error' ? (
+                                <div className={styles.thumbError} title={img.error}>!</div>
+                              ) : (
+                                <img
+                                  src={img.ebayUrl || img.previewUrl}
+                                  alt={img.name}
+                                  draggable={false}
+                                />
+                              )}
+                              <button
+                                className={styles.thumbRemove}
+                                onClick={(e) => { e.stopPropagation(); handleRemoveImage(listing.id, img.id); }}
+                                aria-label={`Remove ${img.name}`}
+                                type="button"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
