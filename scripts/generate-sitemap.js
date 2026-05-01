@@ -39,6 +39,8 @@ async function fetchArticles() {
     return [];
   }
 
+  console.log('[sitemap] Fetching articles from Supabase URL:', SUPABASE_URL);
+
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/articles?select=slug,published_at,updated_at&order=published_at.desc`,
     {
@@ -49,12 +51,17 @@ async function fetchArticles() {
     }
   );
 
+  console.log('[sitemap] Supabase response status:', res.status);
+
   if (!res.ok) {
-    console.warn('[sitemap] Failed to fetch articles:', res.status);
+    const text = await res.text();
+    console.warn('[sitemap] Failed to fetch articles:', res.status, text.slice(0, 200));
     return [];
   }
 
-  return res.json();
+  const data = await res.json();
+  console.log('[sitemap] Articles returned:', data.length, '— first slug:', data[0]?.slug ?? 'none');
+  return data;
 }
 
 function urlEntry({ loc, lastmod, changefreq, priority }) {
