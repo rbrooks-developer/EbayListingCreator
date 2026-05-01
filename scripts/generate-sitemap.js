@@ -39,10 +39,8 @@ async function fetchArticles() {
     return [];
   }
 
-  console.log('[sitemap] Fetching articles from Supabase URL:', SUPABASE_URL);
-
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/articles?select=slug,published_at,updated_at&order=published_at.desc`,
+    `${SUPABASE_URL}/rest/v1/articles?select=slug,published_at,created_at&order=published_at.desc`,
     {
       headers: {
         apikey:        SUPABASE_ANON,
@@ -51,17 +49,12 @@ async function fetchArticles() {
     }
   );
 
-  console.log('[sitemap] Supabase response status:', res.status);
-
   if (!res.ok) {
-    const text = await res.text();
-    console.warn('[sitemap] Failed to fetch articles:', res.status, text.slice(0, 200));
+    console.warn('[sitemap] Failed to fetch articles:', res.status);
     return [];
   }
 
-  const data = await res.json();
-  console.log('[sitemap] Articles returned:', data.length, '— first slug:', data[0]?.slug ?? 'none');
-  return data;
+  return res.json();
 }
 
 function urlEntry({ loc, lastmod, changefreq, priority }) {
@@ -77,7 +70,7 @@ function urlEntry({ loc, lastmod, changefreq, priority }) {
 
 /** Pick the most recent date from updated_at or published_at. */
 function articleLastmod(article) {
-  const dates = [article.updated_at, article.published_at]
+  const dates = [article.created_at, article.published_at]
     .filter(Boolean)
     .map((d) => d.slice(0, 10));
   return dates.sort().at(-1) ?? TODAY;
