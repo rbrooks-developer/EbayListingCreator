@@ -210,8 +210,13 @@ export default function ListingGrid({
         l.id !== id ? l : { ...l, categoryId, categoryName, aspects: {} }
       )
     );
-    // Discover whether this is a trading-card category in the background
-    if (categoryId) checkConditionPolicies(categoryId);
+    if (categoryId) {
+      checkConditionPolicies(categoryId);
+      // Warm the aspects cache so the status dot updates without opening the modal
+      prewarmAspects([categoryId]).then(() => {
+        onChange([...listingsRef.current]);
+      });
+    }
   }
 
   function updateAspects(id, aspects) {
