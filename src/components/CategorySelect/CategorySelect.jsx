@@ -193,7 +193,11 @@ function CategoryModal({ categories, selectedId, onSelect, onClose }) {
           ) : results.length === 0 ? (
             <div className={styles.emptyPrompt}>
               <span className={styles.emptyIcon} aria-hidden="true">&#128269;</span>
-              <p>No categories found for "<strong>{query}</strong>"</p>
+              <p>No categories found for "<strong>{query}</strong>".</p>
+              <p className={styles.emptyHint}>
+                eBay category names don't always match common terms — try a shorter or broader word.
+                For example, search <em>comics</em> instead of <em>comic books</em>, or <em>shoes</em> instead of <em>sneakers</em>.
+              </p>
             </div>
           ) : (
             <>

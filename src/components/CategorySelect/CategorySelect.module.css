@@ -219,6 +219,13 @@
   text-align: center;
 }
 
+.emptyHint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 340px;
+  line-height: 1.5;
+}
+
 .emptyIcon {
   font-size: 2.5rem;
   opacity: 0.4;
