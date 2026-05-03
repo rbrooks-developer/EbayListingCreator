@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
 import { startCheckout } from '../../services/billingService.js';
+import { useTierPrices, fmtPrice } from '../../hooks/useTierPrices.js';
 import styles from './UsageBanner.module.css';
 
 const PRO_PRICE_ID      = import.meta.env.VITE_STRIPE_PRO_PRICE_ID      ?? '';
@@ -15,8 +16,12 @@ const TIER_LABEL = { free: 'Free', pro: 'Pro', business: 'Business' };
  */
 export default function UsageBanner() {
   const { usage, loading } = useSubscription();
+  const tierPrices = useTierPrices();
   const [upgrading, setUpgrading] = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
+
+  const proPrice      = tierPrices?.pro?.price      != null ? fmtPrice(tierPrices.pro.price)      : '$9.99';
+  const businessPrice = tierPrices?.business?.price != null ? fmtPrice(tierPrices.business.price) : '$25';
 
   // Don't render until data is available
   if (loading || !usage) return null;
@@ -69,7 +74,7 @@ export default function UsageBanner() {
               disabled={upgrading}
               onClick={() => handleUpgrade(PRO_PRICE_ID)}
             >
-              {upgrading ? 'Redirecting…' : 'Upgrade to Pro — $9.99/mo'}
+              {upgrading ? 'Redirecting…' : `Upgrade to Pro — ${proPrice}/mo`}
             </button>
           )}
           {BUSINESS_PRICE_ID && (
@@ -78,7 +83,7 @@ export default function UsageBanner() {
               disabled={upgrading}
               onClick={() => handleUpgrade(BUSINESS_PRICE_ID)}
             >
-              Business — $25/mo
+              {`Business — ${businessPrice}/mo`}
             </button>
           )}
         </div>

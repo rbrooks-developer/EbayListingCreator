@@ -127,6 +127,7 @@ async function handle(request, env) {
   if (path.endsWith('/ebay/shipping'))       return handleEbayShipping(body, env);
   if (path.endsWith('/ebay/aspects/get'))    return handleEbayAspectsGet(body, env);
   if (path.endsWith('/ebay/aspects/save'))   return handleEbayAspectsSave(body, env);
+  if (path.endsWith('/billing/tiers'))    return handleBillingTiers(body, env);
   if (path.endsWith('/billing/usage'))    return handleBillingUsage(body, env);
   if (path.endsWith('/billing/checkout')) return handleBillingCheckout(body, env);
   if (path.endsWith('/billing/portal'))   return handleBillingPortal(body, env);
@@ -798,6 +799,17 @@ async function handleUploadImage(body, env) {
   }
 
   return ok({ url: fullUrl }, env);
+}
+
+// ── /billing/tiers ────────────────────────────────────────────────────────────
+
+async function handleBillingTiers(body, env) {
+  const res = await supabaseFetch(
+    '/tier_limits?select=tier,price,listings_per_month,max_rules,max_images&order=listings_per_month.asc.nullslast',
+    {}, env
+  );
+  if (!res.ok) return err('Failed to load tiers', 500, env);
+  return ok({ tiers: Array.isArray(res.data) ? res.data : [] }, env);
 }
 
 // ── /billing/usage ────────────────────────────────────────────────────────────

@@ -2,16 +2,16 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
 import { startCheckout } from '../../services/billingService.js';
+import { useTierPrices, fmtPrice } from '../../hooks/useTierPrices.js';
 import styles from './PricingSection.module.css';
 
 const PRO_PRICE_ID      = import.meta.env.VITE_STRIPE_PRO_PRICE_ID      ?? '';
 const BUSINESS_PRICE_ID = import.meta.env.VITE_STRIPE_BUSINESS_PRICE_ID ?? '';
 
-const PLANS = [
+const PLAN_META = [
   {
     id:          'free',
     name:        'Free',
-    price:       '$0',
     period:      'forever',
     description: 'Everything you need to get started selling on eBay.',
     features: [
@@ -27,7 +27,6 @@ const PLANS = [
   {
     id:          'pro',
     name:        'Pro',
-    price:       '$9.99',
     period:      '/ month',
     description: 'For regular sellers who need more volume and automation.',
     features: [
@@ -44,7 +43,6 @@ const PLANS = [
   {
     id:          'business',
     name:        'Business',
-    price:       '$24.99',
     period:      '/ month',
     description: 'For power sellers with high volume and complex workflows.',
     features: [
@@ -65,6 +63,16 @@ const TIER_RANK = { free: 0, pro: 1, business: 2 };
 export default function PricingSection({ onSignInClick }) {
   const { user } = useAuth();
   const { usage } = useSubscription();
+  const tierPrices = useTierPrices();
+
+  const PLANS = PLAN_META.map((plan) => ({
+    ...plan,
+    price: plan.id === 'free'
+      ? '$0'
+      : tierPrices?.[plan.id]?.price != null
+        ? fmtPrice(tierPrices[plan.id].price)
+        : '—',
+  }));
   const [upgrading, setUpgrading] = useState(null); // plan id being upgraded to
   const [upgradeError, setUpgradeError] = useState('');
 
