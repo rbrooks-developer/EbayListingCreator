@@ -14,13 +14,6 @@ const PLAN_META = [
     name:        'Free',
     period:      'forever',
     description: 'Everything you need to get started selling on eBay.',
-    features: [
-      '20 listings per month',
-      '5 listing rules',
-      'Up to 4 images per listing',
-      'Excel & CSV import / export',
-      'Trading card support',
-    ],
     priceId:     null,
     highlighted: false,
   },
@@ -29,14 +22,6 @@ const PLAN_META = [
     name:        'Pro',
     period:      '/ month',
     description: 'For regular sellers who need more volume and automation.',
-    features: [
-      '150 listings per month',
-      '25 listing rules',
-      'Up to 10 images per listing',
-      'Excel & CSV import / export',
-      'Trading card support',
-      'Priority support',
-    ],
     priceId:     PRO_PRICE_ID,
     highlighted: true,
   },
@@ -45,18 +30,26 @@ const PLAN_META = [
     name:        'Business',
     period:      '/ month',
     description: 'For power sellers with high volume and complex workflows.',
-    features: [
-      'Unlimited listings',
-      'Unlimited listing rules',
-      'Up to 24 images per listing',
-      'Excel & CSV import / export',
-      'Trading card support',
-      'Priority support',
-    ],
     priceId:     BUSINESS_PRICE_ID,
     highlighted: false,
   },
 ];
+
+function buildPlanFeatures(planId, tierData) {
+  const td = tierData?.[planId];
+  const listings = td
+    ? (td.listings_per_month == null ? 'Unlimited listings' : `${Number(td.listings_per_month).toLocaleString()} listings per month`)
+    : ({ free: '20 listings per month', pro: '150 listings per month', business: 'Unlimited listings' }[planId]);
+  const rules = td
+    ? (td.max_rules == null ? 'Unlimited listing rules' : `${td.max_rules} listing rules`)
+    : ({ free: '5 listing rules', pro: '25 listing rules', business: 'Unlimited listing rules' }[planId]);
+  const images = td
+    ? `Up to ${td.max_images} images per listing`
+    : ({ free: 'Up to 4 images per listing', pro: 'Up to 10 images per listing', business: 'Up to 24 images per listing' }[planId]);
+  const features = [listings, rules, images, 'Excel & CSV import / export', 'Trading card support'];
+  if (planId !== 'free') features.push('Priority support');
+  return features;
+}
 
 const TIER_RANK = { free: 0, pro: 1, business: 2 };
 
@@ -72,6 +65,7 @@ export default function PricingSection({ onSignInClick }) {
       : tierPrices?.[plan.id]?.price != null
         ? fmtPrice(tierPrices[plan.id].price)
         : '—',
+    features: buildPlanFeatures(plan.id, tierPrices),
   }));
   const [upgrading, setUpgrading] = useState(null); // plan id being upgraded to
   const [upgradeError, setUpgradeError] = useState('');

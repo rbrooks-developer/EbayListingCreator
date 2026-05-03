@@ -1,39 +1,42 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useTierPrices } from '../../hooks/useTierPrices.js';
 import styles from './HomePage.module.css';
 
-const FEATURES = [
-  {
-    icon: '🔌',
-    title: 'Connect Once',
-    body: 'Authorize with your eBay account and we\'ll pull down every listing category, shipping service, and fulfillment policy for the US marketplace — ready to use across all your listings.',
-  },
-  {
-    icon: '📋',
-    title: 'Bulk Import or Manual Entry',
-    body: 'Add rows one at a time or import an Excel / CSV file. Category and shipping service names are resolved automatically. Download the template to see the exact column format.',
-  },
-  {
-    icon: '🖼️',
-    title: 'Image Manager',
-    body: 'Upload up to 24 photos per listing directly to eBay\'s picture service. Drag and drop to reorder — the first image is always the main photo shown in search results.',
-  },
-  {
-    icon: '⚡',
-    title: 'Listing Rules',
-    body: 'Create rules that automatically fill in item specifics based on category and title keywords. Sign in once to save your rules and apply them every time you build a listing.',
-  },
-  {
-    icon: '📤',
-    title: 'Post One or All',
-    body: 'Post individual listings with a single click, or use Post All to submit every ready row in one go. Each row shows its status in real time — success, error, or in progress.',
-  },
-  {
-    icon: '🔒',
-    title: 'Privacy First',
-    body: 'Your eBay access token lives only in browser memory and is cleared when you close the tab. Listings are saved locally in your browser so they survive page refreshes.',
-  },
-];
+function buildFeatures(maxImages) {
+  return [
+    {
+      icon: '🔌',
+      title: 'Connect Once',
+      body: 'Authorize with your eBay account and we\'ll pull down every listing category, shipping service, and fulfillment policy for the US marketplace — ready to use across all your listings.',
+    },
+    {
+      icon: '📋',
+      title: 'Bulk Import or Manual Entry',
+      body: 'Add rows one at a time or import an Excel / CSV file. Category and shipping service names are resolved automatically. Download the template to see the exact column format.',
+    },
+    {
+      icon: '🖼️',
+      title: 'Image Manager',
+      body: `Upload up to ${maxImages} photos per listing directly to eBay's picture service. Drag and drop to reorder — the first image is always the main photo shown in search results.`,
+    },
+    {
+      icon: '⚡',
+      title: 'Listing Rules',
+      body: 'Create rules that automatically fill in item specifics based on category and title keywords. Sign in once to save your rules and apply them every time you build a listing.',
+    },
+    {
+      icon: '📤',
+      title: 'Post One or All',
+      body: 'Post individual listings with a single click, or use Post All to submit every ready row in one go. Each row shows its status in real time — success, error, or in progress.',
+    },
+    {
+      icon: '🔒',
+      title: 'Privacy First',
+      body: 'Your eBay access token lives only in browser memory and is cleared when you close the tab. Listings are saved locally in your browser so they survive page refreshes.',
+    },
+  ];
+}
 
 const STEPS = [
   {
@@ -55,6 +58,8 @@ const STEPS = [
 
 export default function HomePage({ onSignInClick }) {
   const { user } = useAuth();
+  const tierPrices = useTierPrices();
+  const FEATURES = buildFeatures(tierPrices?.business?.max_images ?? 24);
 
   return (
     <div className={styles.page} id="home">

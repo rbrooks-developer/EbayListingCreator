@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useTierPrices } from '../../hooks/useTierPrices.js';
 import styles from './FaqPage.module.css';
 
-const FAQS = [
+function buildFaqs(maxImages) {
+  return [
   {
     category: 'Getting Started',
     items: [
@@ -57,7 +59,7 @@ const FAQS = [
       },
       {
         q: 'How many images can I add per listing?',
-        a: 'Up to 24 images per listing, which is eBay\'s maximum.',
+        a: `Up to ${maxImages} images per listing, which is eBay's maximum.`,
       },
       {
         q: 'How do I set the main image?',
@@ -190,9 +192,13 @@ const FAQS = [
       },
     ],
   },
-];
+  ];
+}
 
 export default function FaqPage() {
+  const tierPrices = useTierPrices();
+  const maxImages = tierPrices?.business?.max_images ?? 24;
+  const FAQS = buildFaqs(maxImages);
   const [openItems, setOpenItems] = useState({});
 
   function toggle(key) {

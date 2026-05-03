@@ -65,9 +65,9 @@ export default function UpgradeModal({ isOpen, onClose }) {
               <span className={styles.planPrice}>{proPrice} <span className={styles.planPeriod}>/ month</span></span>
             </div>
             <ul className={styles.features}>
-              <li>150 listings per month</li>
-              <li>25 listing rules</li>
-              <li>Up to 10 images per listing</li>
+              <li>{tierPrices?.pro?.listings_per_month == null ? 'Unlimited listings' : `${tierPrices.pro.listings_per_month.toLocaleString()} listings per month`}</li>
+              <li>{tierPrices?.pro?.max_rules == null ? 'Unlimited listing rules' : `${tierPrices.pro.max_rules} listing rules`}</li>
+              <li>Up to {tierPrices?.pro?.max_images ?? 10} images per listing</li>
               <li>Priority support</li>
             </ul>
             <button
@@ -85,9 +85,9 @@ export default function UpgradeModal({ isOpen, onClose }) {
               <span className={styles.planPrice}>{businessPrice} <span className={styles.planPeriod}>/ month</span></span>
             </div>
             <ul className={styles.features}>
-              <li>Unlimited listings</li>
-              <li>Unlimited listing rules</li>
-              <li>Up to 24 images per listing</li>
+              <li>{tierPrices?.business?.listings_per_month == null ? 'Unlimited listings' : `${tierPrices.business.listings_per_month.toLocaleString()} listings per month`}</li>
+              <li>{tierPrices?.business?.max_rules == null ? 'Unlimited listing rules' : `${tierPrices.business.max_rules} listing rules`}</li>
+              <li>Up to {tierPrices?.business?.max_images ?? 24} images per listing</li>
               <li>Priority support</li>
             </ul>
             <button
