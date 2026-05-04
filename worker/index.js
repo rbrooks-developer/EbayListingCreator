@@ -364,6 +364,14 @@ function xmlEscape(str) {
     .replace(/'/g, '&apos;');
 }
 
+// eBay requires ScheduleTime to land on :00 or :30 — round down to nearest boundary
+function roundToHalfHour(isoString) {
+  const d = new Date(isoString);
+  const m = d.getUTCMinutes();
+  d.setUTCMinutes(m < 30 ? 0 : 30, 0, 0);
+  return d.toISOString();
+}
+
 async function handleCreateListing(body, env) {
   const {
     token, listing, marketplaceId = 'EBAY_US', sandbox = false,
@@ -604,6 +612,7 @@ async function handleCreateListing(body, env) {
     <Location>${xmlEscape(defaultLocation || site.country)}</Location>
     ${defaultPostalCode ? `<PostalCode>${xmlEscape(defaultPostalCode)}</PostalCode>` : ''}
     <DispatchTimeMax>3</DispatchTimeMax>
+    ${!isRevision && listing.scheduledTime ? `<ScheduleTime>${roundToHalfHour(listing.scheduledTime)}</ScheduleTime>` : ''}
     <ListingDuration>${duration}</ListingDuration>
     <ListingType>${listingType}</ListingType>
     <Quantity>${parseInt(listing.quantity) || 1}</Quantity>

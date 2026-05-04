@@ -1,0 +1,216 @@
+.container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.trigger:hover {
+  border-color: var(--accent);
+}
+
+.triggerSet {
+  border-color: #7c3aed;
+  color: var(--text);
+}
+
+.triggerSet:hover {
+  border-color: #6d28d9;
+}
+
+.calIcon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.clearX {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-left: 0.15rem;
+  transition: background 0.1s, color 0.1s;
+}
+
+.clearX:hover {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+/* ── Popup ───────────────────────────────────────────────────── */
+
+.popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 300;
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+/* ── Calendar side ───────────────────────────────────────────── */
+
+.cal {
+  padding: 0.8rem;
+  width: 232px;
+  border-right: 1px solid var(--border);
+}
+
+.calNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.navBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.navBtn:hover {
+  background: var(--hover-bg, rgba(255,255,255,0.06));
+  color: var(--text);
+}
+
+.monthLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.dayName {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.25rem 0 0.1rem;
+  font-weight: 500;
+}
+
+.day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text);
+  padding: 0;
+  transition: background 0.1s;
+}
+
+.day:hover:not(:disabled) {
+  background: var(--hover-bg, rgba(255,255,255,0.06));
+}
+
+.day:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.daySelected {
+  background: #7c3aed !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.dayToday {
+  font-weight: 700;
+  color: #a78bfa;
+}
+
+/* ── Time side ───────────────────────────────────────────────── */
+
+.timeSide {
+  display: flex;
+  flex-direction: column;
+  width: 108px;
+}
+
+.timeHeader {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.6rem 0 0.35rem;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.timeList {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 240px;
+  padding: 0.2rem 0;
+}
+
+.timeList::-webkit-scrollbar        { width: 4px; }
+.timeList::-webkit-scrollbar-track  { background: transparent; }
+.timeList::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 2px; }
+
+.timeSlot {
+  display: block;
+  width: 100%;
+  padding: 0.38rem 0.5rem;
+  background: transparent;
+  border: none;
+  font-size: 0.79rem;
+  color: var(--text);
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.timeSlot:hover:not(:disabled) {
+  background: var(--hover-bg, rgba(255,255,255,0.06));
+}
+
+.timeSlot:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.timeSlotSelected {
+  background: #7c3aed !important;
+  color: #fff !important;
+  font-weight: 600;
+}

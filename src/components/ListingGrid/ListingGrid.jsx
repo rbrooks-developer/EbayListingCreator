@@ -12,6 +12,7 @@ import TradingCardModal from '../TradingCardModal/TradingCardModal.jsx';
 import ImageManagerModal from '../ImageManagerModal/ImageManagerModal.jsx';
 import BulkImageModal from '../BulkImageModal/BulkImageModal.jsx';
 import ShippingPicker from '../ShippingPicker/ShippingPicker.jsx';
+import SchedulePicker from '../SchedulePicker/SchedulePicker.jsx';
 import styles from './ListingGrid.module.css';
 
 /**
@@ -151,6 +152,7 @@ export default function ListingGrid({
   const [imageModalListingId, setImageModalListingId] = useState(null);
   const [bulkImageOpen, setBulkImageOpen] = useState(false);
   const [isPostingAll, setIsPostingAll] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState(null); // local Date | null
   // Set of categoryIds that have condition descriptors (trading card categories).
   // Pre-seeded with the 3 known TC parent IDs; API detection adds more (subcategories).
   const [tcCategoryIds, setTcCategoryIds] = useState(() => new Set(KNOWN_TC_CATEGORY_IDS));
@@ -295,10 +297,14 @@ export default function ListingGrid({
     const isRevision = !!listing.listingId;
     onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'submitting', statusError: '' }));
 
+    const schedUtc = (!isRevision && scheduledTime) ? scheduledTime.toISOString() : null;
+    const payload  = schedUtc ? { ...listing, scheduledTime: schedUtc } : listing;
+
     try {
       const supabaseToken = await getAccessToken();
-      const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
-      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: isRevision ? 'updated' : 'success', listingId }));
+      const { listingId } = await createListing(accessToken, payload, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
+      const newStatus = isRevision ? 'updated' : (schedUtc ? 'scheduled' : 'success');
+      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: newStatus, listingId, ...(schedUtc ? { postedScheduledTime: schedUtc } : {}) }));
       if (!isRevision) refreshUsage();
     } catch (e) {
       const errMsg = e.message === 'limit_reached'
@@ -314,6 +320,7 @@ export default function ListingGrid({
     if (!pending.length) return;
 
     setIsPostingAll(true);
+    const schedUtc = scheduledTime ? scheduledTime.toISOString() : null;
 
     // Mark all pending as submitting at once
     onChange(listingsRef.current.map((l) =>
@@ -330,9 +337,11 @@ export default function ListingGrid({
         continue;
       }
 
+      const payload = schedUtc ? { ...listing, scheduledTime: schedUtc } : listing;
       try {
-        const { listingId } = await createListing(accessToken, listing, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
-        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'success', listingId }));
+        const { listingId } = await createListing(accessToken, payload, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
+        const newStatus = schedUtc ? 'scheduled' : 'success';
+        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: newStatus, listingId, ...(schedUtc ? { postedScheduledTime: schedUtc } : {}) }));
       } catch (e) {
         const errMsg = e.message === 'limit_reached'
           ? 'Monthly listing limit reached. Upgrade your plan to continue posting.'
@@ -528,6 +537,19 @@ export default function ListingGrid({
             )}
           </div>
         </div>
+
+        {/* ── Schedule bar ── */}
+        {accessToken && (
+          <div className={styles.scheduleBar}>
+            <span className={styles.scheduleLabel}>Post time:</span>
+            <SchedulePicker value={scheduledTime} onChange={setScheduledTime} />
+            <span className={styles.scheduleHint}>
+              {scheduledTime
+                ? 'Listings will be submitted now but go live on eBay at the scheduled time'
+                : 'No schedule — listings go live immediately after posting'}
+            </span>
+          </div>
+        )}
 
         {/* ── Import feedback ── */}
         {importStatus && <div className={styles.alertInfo} role="status">{importStatus}</div>}
@@ -737,6 +759,17 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
             <button className={styles.retryBtn} onClick={() => onPost(listing.id)} disabled={!canPost}>
               Update
             </button>
+          </div>
+        )}
+        {postStatus === 'scheduled' && (
+          <div className={styles.statusScheduled}>
+            <span className={styles.statusBadgeScheduled}>Scheduled</span>
+            <span className={styles.statusId} title={listingId}>{listingId}</span>
+            {listing.postedScheduledTime && (
+              <span className={styles.scheduledFor}>
+                {new Date(listing.postedScheduledTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+              </span>
+            )}
           </div>
         )}
         {postStatus === 'error' && (

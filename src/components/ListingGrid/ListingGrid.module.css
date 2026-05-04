@@ -141,6 +141,29 @@
   flex-wrap: wrap;
 }
 
+/* Schedule bar */
+.scheduleBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+
+.scheduleLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.scheduleHint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 /* Buttons */
 .btnPrimary {
   padding: 0.55rem 1.25rem;
@@ -513,6 +536,28 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 120px;
+}
+
+.statusScheduled {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.statusBadgeScheduled {
+  display: inline-block;
+  padding: 0.15em 0.5em;
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #c4b5fd;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.scheduledFor {
+  font-size: 0.68rem;
+  color: #a78bfa;
 }
 
 .statusError {
