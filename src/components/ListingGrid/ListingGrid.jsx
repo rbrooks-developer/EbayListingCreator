@@ -5,6 +5,7 @@ import { createListing, fetchAspectsForCategory, fetchConditionPolicies } from '
 import { applyRules } from '../../utils/rulesEngine.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
+import useListingDefaults, { countDefaults, applyListingDefaults } from '../../hooks/useListingDefaults.js';
 import UsageBanner from '../UsageBanner/UsageBanner.jsx';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
@@ -12,6 +13,7 @@ import TradingCardModal from '../TradingCardModal/TradingCardModal.jsx';
 import ImageManagerModal from '../ImageManagerModal/ImageManagerModal.jsx';
 import BulkImageModal from '../BulkImageModal/BulkImageModal.jsx';
 import ShippingPicker from '../ShippingPicker/ShippingPicker.jsx';
+import DefaultValuesModal from '../DefaultValuesModal/DefaultValuesModal.jsx';
 import styles from './ListingGrid.module.css';
 
 /**
@@ -142,6 +144,7 @@ export default function ListingGrid({
   const { getAccessToken } = useAuth();
   const { usage, refresh: refreshUsage } = useSubscription();
   const maxImages = usage?.maxImages ?? 24;
+  const { defaults, saveDefaults } = useListingDefaults();
 
   const [importErrors, setImportErrors] = useState([]);
   const [importStatus, setImportStatus] = useState('');
@@ -150,6 +153,7 @@ export default function ListingGrid({
   const [tcModalInitialType, setTcModalInitialType] = useState('');
   const [imageModalListingId, setImageModalListingId] = useState(null);
   const [bulkImageOpen, setBulkImageOpen] = useState(false);
+  const [defaultsOpen, setDefaultsOpen] = useState(false);
   const [isPostingAll, setIsPostingAll] = useState(false);
   const [scheduledTime] = useState(null); // reserved for future scheduled-posting feature
   // Set of categoryIds that have condition descriptors (trading card categories).
@@ -180,7 +184,7 @@ export default function ListingGrid({
   // ── Row mutation helpers ─────────────────────────────────────────────────
 
   function addRow() {
-    onChange([...listings, createEmptyListing()]);
+    onChange([...listings, applyListingDefaults(createEmptyListing(), defaults)]);
   }
 
   function removeRow(id) {
@@ -407,7 +411,8 @@ export default function ListingGrid({
       const { listings: imported, errors } = await parseListingFile(file, categories, shippingServices);
       setImportErrors(errors);
       if (imported.length > 0) {
-        const merged = [...listings, ...imported];
+        const withDefaults = imported.map((l) => applyListingDefaults(l, defaults));
+        const merged = [...listings, ...withDefaults];
         onChange(merged);
         setImportStatus(`Imported ${imported.length} listing${imported.length !== 1 ? 's' : ''} from "${file.name}".`);
         // Pre-fetch aspects for all imported categories so status shows immediately
@@ -502,6 +507,9 @@ export default function ListingGrid({
             </button>
             <button className={styles.btnOutline} onClick={onOpenRulesManager}>
               Rules{rules.length > 0 ? ` (${rules.length})` : ''}
+            </button>
+            <button className={styles.btnOutline} onClick={() => setDefaultsOpen(true)}>
+              Defaults{countDefaults(defaults) > 0 ? ` (${countDefaults(defaults)})` : ''}
             </button>
             {hasListings && accessToken && (
               <button className={styles.btnOutline} onClick={() => setBulkImageOpen(true)}>
@@ -646,6 +654,19 @@ export default function ListingGrid({
           policiesCache={policiesCache}
           onSave={(patch) => updateTradingCard(tcModalListing.id, patch)}
           onClose={() => { setTcModalListingId(null); setTcModalInitialType(''); }}
+        />
+      )}
+
+      {/* ── Default values modal ── */}
+      {defaultsOpen && (
+        <DefaultValuesModal
+          defaults={defaults}
+          onSave={saveDefaults}
+          categories={categories}
+          fulfillmentPolicies={fulfillmentPolicies}
+          shippingServices={shippingServices}
+          onPrewarm={(ids) => prewarmAspects(ids).then(() => onChange([...listingsRef.current]))}
+          onClose={() => setDefaultsOpen(false)}
         />
       )}
 
