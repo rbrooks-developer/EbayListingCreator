@@ -428,9 +428,11 @@ async function handleCreateListing(body, env) {
 
   const site        = SITE_MAP[marketplaceId] ?? SITE_MAP.EBAY_US;
   const isAuction   = listing.listingType === 'Auction';
+  // AddFixedPriceItem does not support ScheduleTime (not in its WSDL type).
+  // For scheduled fixed-price listings we use AddItem, which does.
   const callName    = isRevision
     ? (isAuction ? 'ReviseItem' : 'ReviseFixedPriceItem')
-    : (isAuction ? 'AddItem'   : 'AddFixedPriceItem');
+    : (isAuction || (!isRevision && listing.scheduledTime) ? 'AddItem' : 'AddFixedPriceItem');
   const price       = isAuction ? (listing.auctionStartPrice || '0.99') : (listing.price || '0.00');
   const duration    = isAuction ? (DURATION_MAP[String(listing.auctionDays)] ?? 'Days_7') : 'GTC';
   const listingType = isAuction ? 'Chinese' : 'FixedPriceItem';
@@ -700,11 +702,7 @@ async function handleCreateListing(body, env) {
     }
   }
 
-  const ebayStartTime = text.match(/<StartTime>(.*?)<\/StartTime>/)?.[1] ?? null;
-  const ebayWarnings  = [...text.matchAll(/<LongMessage>(.*?)<\/LongMessage>/g)].map(m => m[1]);
-  const xmlSent       = listing.scheduledTime ? xml.replace(/<eBayAuthToken>.*?<\/eBayAuthToken>/s, '<eBayAuthToken>[redacted]</eBayAuthToken>') : null;
-
-  return ok({ listingId: itemId, usage: usageInfo, _debug: { scheduledTimeReceived: listing.scheduledTime ?? null, ebayStartTime, ebayWarnings, xmlSent } }, env);
+  return ok({ listingId: itemId, usage: usageInfo }, env);
 }
 
 // ── /user-location ────────────────────────────────────────────────────────────
