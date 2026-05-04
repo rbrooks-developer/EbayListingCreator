@@ -702,8 +702,9 @@ async function handleCreateListing(body, env) {
 
   const ebayStartTime = text.match(/<StartTime>(.*?)<\/StartTime>/)?.[1] ?? null;
   const ebayWarnings  = [...text.matchAll(/<LongMessage>(.*?)<\/LongMessage>/g)].map(m => m[1]);
+  const xmlSent       = listing.scheduledTime ? xml.replace(/<eBayAuthToken>.*?<\/eBayAuthToken>/s, '<eBayAuthToken>[redacted]</eBayAuthToken>') : null;
 
-  return ok({ listingId: itemId, usage: usageInfo, _debug: { scheduledTimeReceived: listing.scheduledTime ?? null, ebayStartTime, ebayWarnings } }, env);
+  return ok({ listingId: itemId, usage: usageInfo, _debug: { scheduledTimeReceived: listing.scheduledTime ?? null, ebayStartTime, ebayWarnings, xmlSent } }, env);
 }
 
 // ── /user-location ────────────────────────────────────────────────────────────
