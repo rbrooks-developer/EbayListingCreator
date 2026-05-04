@@ -302,7 +302,9 @@ export default function ListingGrid({
 
     try {
       const supabaseToken = await getAccessToken();
-      const { listingId } = await createListing(accessToken, payload, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
+      const result = await createListing(accessToken, payload, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
+      if (schedUtc && result._debug) console.log('[schedule debug]', result._debug);
+      const { listingId } = result;
       const newStatus = isRevision ? 'updated' : (schedUtc ? 'scheduled' : 'success');
       onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: newStatus, listingId, ...(schedUtc ? { postedScheduledTime: schedUtc } : {}) }));
       if (!isRevision) refreshUsage();

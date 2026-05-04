@@ -702,7 +702,13 @@ async function handleCreateListing(body, env) {
     }
   }
 
-  return ok({ listingId: itemId, usage: usageInfo }, env);
+  const _debug = listing.scheduledTime ? {
+    callNameUsed: callName,
+    scheduledTimeSent: listing.scheduledTime,
+    ebayStartTime: text.match(/<StartTime>(.*?)<\/StartTime>/)?.[1] ?? null,
+  } : undefined;
+
+  return ok({ listingId: itemId, usage: usageInfo, _debug }, env);
 }
 
 // ── /user-location ────────────────────────────────────────────────────────────
