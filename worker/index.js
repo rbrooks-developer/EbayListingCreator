@@ -612,7 +612,6 @@ async function handleCreateListing(body, env) {
     <Location>${xmlEscape(defaultLocation || site.country)}</Location>
     ${defaultPostalCode ? `<PostalCode>${xmlEscape(defaultPostalCode)}</PostalCode>` : ''}
     <DispatchTimeMax>3</DispatchTimeMax>
-    ${!isRevision && listing.scheduledTime ? `<ScheduleTime>${roundToHalfHour(listing.scheduledTime)}</ScheduleTime>` : ''}
     <ListingDuration>${duration}</ListingDuration>
     <ListingType>${listingType}</ListingType>
     <Quantity>${parseInt(listing.quantity) || 1}</Quantity>
@@ -625,6 +624,7 @@ async function handleCreateListing(body, env) {
     ${itemSpecificsXml}
     ${bestOfferXml}
   </Item>
+  ${!isRevision && listing.scheduledTime ? `<ScheduleTime>${roundToHalfHour(listing.scheduledTime)}</ScheduleTime>` : ''}
 </${callName}Request>`;
 
   // ── Call Trading API ──────────────────────────────────────────────────────
