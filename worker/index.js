@@ -705,7 +705,7 @@ async function handleCreateListing(body, env) {
   const _debug = listing.scheduledTime ? {
     callNameUsed: callName,
     scheduledTimeSent: listing.scheduledTime,
-    ebayStartTime: text.match(/<StartTime>(.*?)<\/StartTime>/)?.[1] ?? null,
+    ebayResponseXml: text,
   } : undefined;
 
   return ok({ listingId: itemId, usage: usageInfo, _debug }, env);
