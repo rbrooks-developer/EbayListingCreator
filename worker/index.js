@@ -434,7 +434,7 @@ async function handleCreateListing(body, env) {
     ? (isAuction ? 'ReviseItem' : 'ReviseFixedPriceItem')
     : (isAuction || (!isRevision && listing.scheduledTime) ? 'AddItem' : 'AddFixedPriceItem');
   const price       = isAuction ? (listing.auctionStartPrice || '0.99') : (listing.price || '0.00');
-  const duration    = isAuction ? (DURATION_MAP[String(listing.auctionDays)] ?? 'Days_7') : (!isRevision && listing.scheduledTime ? 'Days_30' : 'GTC');
+  const duration    = isAuction ? (DURATION_MAP[String(listing.auctionDays)] ?? 'Days_7') : 'GTC';
   const listingType = isAuction ? 'Chinese' : 'FixedPriceItem';
   const conditionId = listing.conditionId || CONDITION_MAP[listing.condition] || '1000';
 
@@ -702,15 +702,7 @@ async function handleCreateListing(body, env) {
     }
   }
 
-  const _debug = listing.scheduledTime ? {
-    callNameUsed: callName,
-    durationSent: duration,
-    scheduledTimeSent: listing.scheduledTime,
-    ebayStartTime: text.match(/<StartTime>(.*?)<\/StartTime>/)?.[1] ?? null,
-    ebayEndTime:   text.match(/<EndTime>(.*?)<\/EndTime>/)?.[1]   ?? null,
-  } : undefined;
-
-  return ok({ listingId: itemId, usage: usageInfo, _debug }, env);
+  return ok({ listingId: itemId, usage: usageInfo }, env);
 }
 
 // ── /user-location ────────────────────────────────────────────────────────────

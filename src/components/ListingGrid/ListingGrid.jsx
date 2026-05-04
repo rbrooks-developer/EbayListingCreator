@@ -12,7 +12,6 @@ import TradingCardModal from '../TradingCardModal/TradingCardModal.jsx';
 import ImageManagerModal from '../ImageManagerModal/ImageManagerModal.jsx';
 import BulkImageModal from '../BulkImageModal/BulkImageModal.jsx';
 import ShippingPicker from '../ShippingPicker/ShippingPicker.jsx';
-import SchedulePicker from '../SchedulePicker/SchedulePicker.jsx';
 import styles from './ListingGrid.module.css';
 
 /**
@@ -152,7 +151,7 @@ export default function ListingGrid({
   const [imageModalListingId, setImageModalListingId] = useState(null);
   const [bulkImageOpen, setBulkImageOpen] = useState(false);
   const [isPostingAll, setIsPostingAll] = useState(false);
-  const [scheduledTime, setScheduledTime] = useState(null); // local Date | null
+  const [scheduledTime] = useState(null); // reserved for future scheduled-posting feature
   // Set of categoryIds that have condition descriptors (trading card categories).
   // Pre-seeded with the 3 known TC parent IDs; API detection adds more (subcategories).
   const [tcCategoryIds, setTcCategoryIds] = useState(() => new Set(KNOWN_TC_CATEGORY_IDS));
@@ -539,19 +538,6 @@ export default function ListingGrid({
             )}
           </div>
         </div>
-
-        {/* ── Schedule bar ── */}
-        {accessToken && (
-          <div className={styles.scheduleBar}>
-            <span className={styles.scheduleLabel}>Post time:</span>
-            <SchedulePicker value={scheduledTime} onChange={setScheduledTime} />
-            <span className={styles.scheduleHint}>
-              {scheduledTime
-                ? 'Listings will be submitted now but go live on eBay at the scheduled time'
-                : 'No schedule — listings go live immediately after posting'}
-            </span>
-          </div>
-        )}
 
         {/* ── Import feedback ── */}
         {importStatus && <div className={styles.alertInfo} role="status">{importStatus}</div>}
