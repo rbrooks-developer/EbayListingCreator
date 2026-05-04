@@ -700,7 +700,10 @@ async function handleCreateListing(body, env) {
     }
   }
 
-  return ok({ listingId: itemId, usage: usageInfo }, env);
+  const ebayStartTime = text.match(/<StartTime>(.*?)<\/StartTime>/)?.[1] ?? null;
+  const ebayWarnings  = [...text.matchAll(/<LongMessage>(.*?)<\/LongMessage>/g)].map(m => m[1]);
+
+  return ok({ listingId: itemId, usage: usageInfo, _debug: { scheduledTimeReceived: listing.scheduledTime ?? null, ebayStartTime, ebayWarnings } }, env);
 }
 
 // ── /user-location ────────────────────────────────────────────────────────────
