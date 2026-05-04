@@ -125,7 +125,7 @@ export default function DefaultValuesModal({
                 value={defaults.fulfillmentPolicyId}
                 onChange={(e) => save({ fulfillmentPolicyId: e.target.value })}
               >
-                <option value="">— none —</option>
+                <option value="">— auto (first) —</option>
                 {fulfillmentPolicies.map((p) => (
                   <option key={p.fulfillmentPolicyId} value={p.fulfillmentPolicyId}>
                     {p.name}
