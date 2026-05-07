@@ -391,7 +391,7 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
   ws['!cols'] = [
     { wch: 50 }, // Title
     { wch: 40 }, // Description
-    { wch: 30 }, // Category
+    { wch: 50 }, // Category
     { wch: 6  }, // Qty
     { wch: 10 }, // Condition
     { wch: 14 }, // Listing Type
