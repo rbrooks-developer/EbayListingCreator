@@ -127,6 +127,7 @@ async function handle(request, env) {
   if (path.endsWith('/ebay/shipping'))       return handleEbayShipping(body, env);
   if (path.endsWith('/ebay/aspects/get'))    return handleEbayAspectsGet(body, env);
   if (path.endsWith('/ebay/aspects/save'))   return handleEbayAspectsSave(body, env);
+  if (path.endsWith('/ebay/seller-listings')) return handleEbaySellerListings(body, env);
   if (path.endsWith('/billing/tiers'))    return handleBillingTiers(body, env);
   if (path.endsWith('/billing/usage'))    return handleBillingUsage(body, env);
   if (path.endsWith('/billing/checkout')) return handleBillingCheckout(body, env);
@@ -1146,6 +1147,89 @@ async function handleEbayShipping(body, env) {
   }));
 
   return ok({ services }, env);
+}
+
+// ── /ebay/seller-listings ────────────────────────────────────────────────────
+
+async function handleEbaySellerListings({ token, sandbox = false, page = 1, entriesPerPage = 75 }, env) {
+  if (!token) return err('Missing "token"', 400, env);
+
+  const clientId     = sandbox ? env.EBAY_SANDBOX_CLIENT_ID     : env.EBAY_CLIENT_ID;
+  const clientSecret = sandbox ? env.EBAY_SANDBOX_CLIENT_SECRET : env.EBAY_CLIENT_SECRET;
+  const devId        = env.EBAY_DEV_ID;
+  if (!devId) return err('EBAY_DEV_ID secret is not set', 500, env);
+
+  const safePerPage = Math.min(200, Math.max(1, parseInt(entriesPerPage) || 75));
+  const safePage    = Math.max(1, parseInt(page) || 1);
+
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${token}</eBayAuthToken>
+  </RequesterCredentials>
+  <ActiveList>
+    <Include>true</Include>
+    <Pagination>
+      <EntriesPerPage>${safePerPage}</EntriesPerPage>
+      <PageNumber>${safePage}</PageNumber>
+    </Pagination>
+  </ActiveList>
+  <GranularityLevel>Medium</GranularityLevel>
+</GetMyeBaySellingRequest>`;
+
+  const apiUrl = sandbox ? TRADING_API_SANDBOX_URL : TRADING_API_URL;
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type':                    'text/xml',
+      'X-EBAY-API-COMPATIBILITY-LEVEL':  '1263',
+      'X-EBAY-API-DEV-NAME':             devId,
+      'X-EBAY-API-APP-NAME':             clientId,
+      'X-EBAY-API-CERT-NAME':            clientSecret,
+      'X-EBAY-API-CALL-NAME':            'GetMyeBaySelling',
+      'X-EBAY-API-SITEID':               '0',
+    },
+    body: xml,
+  });
+
+  const text = await res.text();
+  const ack  = text.match(/<Ack>(.*?)<\/Ack>/)?.[1];
+
+  if (ack === 'Failure') {
+    return err(extractEbayError(text) ?? 'Failed to fetch listings', 400, env);
+  }
+
+  // Parse pagination from within the ActiveList block
+  const activeBlock   = text.match(/<ActiveList>([\s\S]*?)<\/ActiveList>/)?.[1] ?? text;
+  const totalPages    = parseInt(activeBlock.match(/<TotalNumberOfPages>(\d+)<\/TotalNumberOfPages>/)?.[1] ?? '1');
+  const totalEntries  = parseInt(activeBlock.match(/<TotalNumberOfEntries>(\d+)<\/TotalNumberOfEntries>/)?.[1] ?? '0');
+
+  // Parse each <Item> within the active block
+  const listings = [];
+  const itemRegex = /<Item>([\s\S]*?)<\/Item>/g;
+  let match;
+  while ((match = itemRegex.exec(activeBlock)) !== null) {
+    const item = match[1];
+    const get = (tag) => decodeEntities(item.match(new RegExp(`<${tag}>([^<]*)<\\/${tag}>`))?.[1]?.trim() ?? '');
+
+    const priceMatch          = item.match(/<CurrentPrice currencyID="([^"]*)">([\d.]*)<\/CurrentPrice>/);
+    const listingDetailsBlock = item.match(/<ListingDetails>([\s\S]*?)<\/ListingDetails>/)?.[1] ?? '';
+    const endTime             = listingDetailsBlock.match(/<EndTime>([^<]*)<\/EndTime>/)?.[1] ?? '';
+
+    listings.push({
+      itemId:            get('ItemID'),
+      title:             get('Title'),
+      galleryUrl:        get('GalleryURL'),
+      listingType:       get('ListingType'),
+      price:             priceMatch?.[2] ?? '',
+      currency:          priceMatch?.[1] ?? 'USD',
+      quantity:          get('Quantity'),
+      quantityAvailable: get('QuantityAvailable'),
+      endTime,
+    });
+  }
+
+  return ok({ listings, totalPages, totalEntries, page: safePage }, env);
 }
 
 // ── /ebay/sync ────────────────────────────────────────────────────────────────

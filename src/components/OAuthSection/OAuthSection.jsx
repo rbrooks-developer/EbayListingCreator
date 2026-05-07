@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { buildAuthorizationUrl, isEbayConfigured } from '../../services/ebayApi.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import OpenListingsModal from '../OpenListingsModal/OpenListingsModal.jsx';
 import styles from './OAuthSection.module.css';
 
 /**
@@ -16,6 +17,7 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
   const { user } = useAuth();
   const marketplace = 'EBAY_US';
   const [postalCode, setPostalCode] = useState(() => localStorage.getItem('ebay_saved_postal_code') ?? '');
+  const [openListingsOpen, setOpenListingsOpen] = useState(false);
 
   const sandbox = false;
   const configured = isEbayConfigured(sandbox);
@@ -77,7 +79,19 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
 
           {/* ── Connected ── */}
           {!isExchanging && !exchangeError && isConnected && (
-            <ConnectedState data={connectionData} onDisconnect={onDisconnect} />
+            <ConnectedState
+              data={connectionData}
+              onDisconnect={onDisconnect}
+              onOpenListings={() => setOpenListingsOpen(true)}
+            />
+          )}
+
+          {openListingsOpen && connectionData?.accessToken && (
+            <OpenListingsModal
+              accessToken={connectionData.accessToken}
+              sandbox={connectionData.sandbox ?? false}
+              onClose={() => setOpenListingsOpen(false)}
+            />
           )}
 
           {/* ── Connect form ── */}
@@ -121,7 +135,7 @@ export default function OAuthSection({ connectionData, isExchanging, exchangeErr
 
 // ── Connected state ───────────────────────────────────────────────────────────
 
-function ConnectedState({ data, onDisconnect }) {
+function ConnectedState({ data, onDisconnect, onOpenListings }) {
   return (
     <div className={styles.connectedBox}>
       <div className={styles.connectedIcon} aria-hidden="true">&#10003;</div>
@@ -148,9 +162,14 @@ function ConnectedState({ data, onDisconnect }) {
           Your eBay token is held in session memory and will be cleared when you close this tab.
         </p>
       </div>
-      <button className={styles.btnSecondary} onClick={onDisconnect}>
-        Disconnect
-      </button>
+      <div className={styles.connectedActions}>
+        <button className={styles.btnSecondary} onClick={onDisconnect}>
+          Disconnect
+        </button>
+        <button className={styles.btnSecondary} onClick={onOpenListings}>
+          Open Listings
+        </button>
+      </div>
     </div>
   );
 }

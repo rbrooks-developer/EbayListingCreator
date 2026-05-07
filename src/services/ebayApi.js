@@ -339,3 +339,7 @@ export async function fetchAspectsForCategory(accessToken, categoryTreeId, categ
     return [];
   }
 }
+
+export async function fetchSellerListings(accessToken, sandbox, page = 1) {
+  return workerPost('ebay/seller-listings', { token: accessToken, sandbox, page, entriesPerPage: 75 });
+}
