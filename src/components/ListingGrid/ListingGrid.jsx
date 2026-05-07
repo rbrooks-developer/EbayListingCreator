@@ -1153,7 +1153,7 @@ function downloadTemplate() {
     ...createEmptyListing(),
     title: 'SDCC 2022 Funko Pop Star Wars Official \'Hall H\' Ahsoka 464 - LE 500',
     description: 'The SDCC 2022 Funko Pop Star Wars Official \'Hall H\' Ahsoka 464 is a limited edition bobblehead collector\'s item featuring the character Ahsoka Tano from the Star Wars series. Produced by Funko, this Pop! Vinyl model is part of the exclusive 2022 release. With only 500 units available, this Ahsoka Funko Pop Star is a highly sought-after item for collectors and fans of the iconic character.',
-    categoryId: 'Collectible Figures & Bobbleheads', 
+    categoryId: '149372', //'Collectible Figures & Bobbleheads', 
     condition: 'New',
     listingType: 'BuyItNow',
     price: '799.99',    
