@@ -46,21 +46,16 @@ function validateListing(listing) {
     issues.push('Quantity must be at least 1');
   }
 
-  // ── Package dimensions / weight — required when a shipping method is set ──
-  const hasShippingMethod = !!listing.shippingService;
+  // ── Package dimensions — optional but must be all filled or all empty ────
   const dims    = ['length', 'width', 'height'];
   const missing = dims.filter((d) => !listing[d] || parseFloat(listing[d]) <= 0);
+  if (missing.length > 0 && missing.length < dims.length) {
+    issues.push(`Package dimensions must be all filled or all empty (missing: ${missing.join(', ')})`);
+  }
 
-  if (hasShippingMethod) {
-    if (missing.length > 0) {
-      issues.push(`Length, width, and height are required when a shipping method is selected (missing: ${missing.join(', ')})`);
-    }
-    if (!listing.weightLbs && !listing.weightOz) {
-      issues.push('Package weight is required when a shipping method is selected (enter lbs and/or oz)');
-    }
-  } else if (missing.length > 0 && missing.length < dims.length) {
-    // Partially filled without a shipping method — still flag incomplete dims
-    issues.push(`Package dimensions incomplete — please fill in: ${missing.join(', ')}`);
+  // ── Weight — required when a shipping method is set ───────────────────────
+  if (listing.shippingService && !listing.weightLbs && !listing.weightOz) {
+    issues.push('Package weight is required when a shipping method is selected (enter lbs and/or oz)');
   }
 
   // ── Images ─────────────────────────────────────────────────────────────────
