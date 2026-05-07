@@ -1151,6 +1151,17 @@ async function handleEbayShipping(body, env) {
 
 // ── /ebay/seller-listings ────────────────────────────────────────────────────
 
+// Parse ISO 8601 duration string (e.g. "P6DT23H44M6S") → milliseconds
+function parseIso8601Duration(str) {
+  const m = str.match(/P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?/);
+  if (!m) return 0;
+  const days    = parseInt(m[1] || '0');
+  const hours   = parseInt(m[2] || '0');
+  const minutes = parseInt(m[3] || '0');
+  const seconds = parseInt(m[4] || '0');
+  return (days * 86400 + hours * 3600 + minutes * 60 + seconds) * 1000;
+}
+
 async function handleEbaySellerListings({ token, sandbox = false, page = 1, entriesPerPage = 75 }, env) {
   if (!token) return err('Missing "token"', 400, env);
 
@@ -1215,6 +1226,8 @@ async function handleEbaySellerListings({ token, sandbox = false, page = 1, entr
     const get = (tag) => decodeEntities(item.match(new RegExp(`<${tag}>([^<]*)<\\/${tag}>`))?.[1]?.trim() ?? '');
 
     const priceMatch = item.match(/<CurrentPrice currencyID="([^"]*)">([\d.]*)<\/CurrentPrice>/);
+    const timeLeft   = get('TimeLeft'); // ISO 8601 duration e.g. "P6DT23H44M6S"
+    const endTime    = timeLeft ? new Date(Date.now() + parseIso8601Duration(timeLeft)).toISOString() : '';
 
     listings.push({
       itemId:            get('ItemID'),
@@ -1225,18 +1238,14 @@ async function handleEbaySellerListings({ token, sandbox = false, page = 1, entr
       currency:          priceMatch?.[1] ?? 'USD',
       quantity:          get('Quantity'),
       quantityAvailable: get('QuantityAvailable'),
-      endTime:           get('EndTime'),
+      endTime,
     });
   }
 
   // Newest listings first (higher ItemID = more recently created)
   listings.sort((a, b) => parseInt(b.itemId || '0') - parseInt(a.itemId || '0'));
 
-  // Debug: include the raw XML of the first item so callers can inspect the structure
-  const firstItemMatch = activeBlock.match(/<Item>([\s\S]*?)<\/Item>/);
-  const debugFirstItem = firstItemMatch ? firstItemMatch[0] : '';
-
-  return ok({ listings, totalPages, totalEntries, page: safePage, debugFirstItem }, env);
+  return ok({ listings, totalPages, totalEntries, page: safePage }, env);
 }
 
 // ── /ebay/sync ────────────────────────────────────────────────────────────────
