@@ -1232,7 +1232,11 @@ async function handleEbaySellerListings({ token, sandbox = false, page = 1, entr
   // Newest listings first (higher ItemID = more recently created)
   listings.sort((a, b) => parseInt(b.itemId || '0') - parseInt(a.itemId || '0'));
 
-  return ok({ listings, totalPages, totalEntries, page: safePage }, env);
+  // Debug: include the raw XML of the first item so callers can inspect the structure
+  const firstItemMatch = activeBlock.match(/<Item>([\s\S]*?)<\/Item>/);
+  const debugFirstItem = firstItemMatch ? firstItemMatch[0] : '';
+
+  return ok({ listings, totalPages, totalEntries, page: safePage, debugFirstItem }, env);
 }
 
 // ── /ebay/sync ────────────────────────────────────────────────────────────────

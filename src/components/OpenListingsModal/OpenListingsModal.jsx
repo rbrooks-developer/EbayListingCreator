@@ -56,6 +56,7 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
     setError(null);
     try {
       const data = await fetchSellerListings(accessToken, sandbox, p);
+      if (data.debugFirstItem) console.log('[OpenListings] first item XML:', data.debugFirstItem);
       setListings(data.listings);
       setTotalPages(data.totalPages);
       setTotalEntries(data.totalEntries);
