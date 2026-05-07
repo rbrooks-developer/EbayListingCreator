@@ -1212,9 +1212,7 @@ async function handleEbaySellerListings({ token, sandbox = false, page = 1, entr
     const item = match[1];
     const get = (tag) => decodeEntities(item.match(new RegExp(`<${tag}>([^<]*)<\\/${tag}>`))?.[1]?.trim() ?? '');
 
-    const priceMatch          = item.match(/<CurrentPrice currencyID="([^"]*)">([\d.]*)<\/CurrentPrice>/);
-    const listingDetailsBlock = item.match(/<ListingDetails>([\s\S]*?)<\/ListingDetails>/)?.[1] ?? '';
-    const endTime             = listingDetailsBlock.match(/<EndTime>([^<]*)<\/EndTime>/)?.[1] ?? '';
+    const priceMatch = item.match(/<CurrentPrice currencyID="([^"]*)">([\d.]*)<\/CurrentPrice>/);
 
     listings.push({
       itemId:            get('ItemID'),
@@ -1225,9 +1223,12 @@ async function handleEbaySellerListings({ token, sandbox = false, page = 1, entr
       currency:          priceMatch?.[1] ?? 'USD',
       quantity:          get('Quantity'),
       quantityAvailable: get('QuantityAvailable'),
-      endTime,
+      endTime:           get('EndTime'),
     });
   }
+
+  // Newest listings first (higher ItemID = more recently created)
+  listings.sort((a, b) => parseInt(b.itemId || '0') - parseInt(a.itemId || '0'));
 
   return ok({ listings, totalPages, totalEntries, page: safePage }, env);
 }

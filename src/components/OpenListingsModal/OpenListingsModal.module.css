@@ -251,6 +251,15 @@
   font-size: 0.75rem;
 }
 
+.endsLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-right: 0.1rem;
+}
+
 /* ── Footer ─────────────────────────────────────────────────────────────── */
 
 .footer {

@@ -17,11 +17,15 @@ function formatPrice(price, currency) {
   return num.toLocaleString('en-US', { style: 'currency', currency: currency || 'USD' });
 }
 
-function formatEndTime(iso) {
-  if (!iso) return '—';
+function formatEndTime(iso, listingType) {
+  if (!iso) return { label: '', value: '—' };
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  if (isNaN(d.getTime())) return { label: '', value: '—' };
+  const isAuction = listingType === 'Chinese';
+  const value = isAuction
+    ? d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return { label: isAuction ? 'Ends' : 'Renews', value };
 }
 
 function buildCsvRow(cols) {
@@ -72,7 +76,7 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
         all = [...all, ...data.listings];
       }
 
-      const header = buildCsvRow(['Item ID', 'Title', 'Type', 'Price', 'Quantity Available', 'Total Quantity', 'Ends', 'eBay URL']);
+      const header = buildCsvRow(['Item ID', 'Title', 'Type', 'Price', 'Quantity Available', 'Total Quantity', 'Ends/Renews', 'eBay URL']);
       const rows = all.map((l) =>
         buildCsvRow([
           l.itemId,
@@ -81,7 +85,7 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
           l.price ? parseFloat(l.price).toFixed(2) : '',
           l.quantityAvailable,
           l.quantity,
-          l.endTime ? new Date(l.endTime).toLocaleString('en-US') : '',
+          l.endTime ? `${l.listingType === 'Chinese' ? 'Ends' : 'Renews'} ${new Date(l.endTime).toLocaleString('en-US')}` : '',
           l.itemId ? `${EBAY_ITEM_URL}${l.itemId}` : '',
         ])
       );
@@ -158,7 +162,7 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
                   <th className={styles.colType}>Type</th>
                   <th className={styles.colQty}>Qty</th>
                   <th className={styles.colPrice}>Price</th>
-                  <th className={styles.colEnds}>Ends</th>
+                  <th className={styles.colEnds}>Ends / Renews</th>
                 </tr>
               </thead>
               <tbody>
@@ -198,7 +202,14 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
                         : null}
                     </td>
                     <td className={styles.colPrice}>{formatPrice(l.price, l.currency)}</td>
-                    <td className={styles.colEnds}>{formatEndTime(l.endTime)}</td>
+                    <td className={styles.colEnds}>
+                      {(() => {
+                        const { label, value } = formatEndTime(l.endTime, l.listingType);
+                        return value === '—' ? '—' : (
+                          <><span className={styles.endsLabel}>{label} </span>{value}</>
+                        );
+                      })()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
