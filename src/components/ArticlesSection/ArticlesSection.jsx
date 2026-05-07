@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../../services/authService.js';
 import styles from './ArticlesSection.module.css';
 
+const PAGE_SIZE = 3;
+
 export default function ArticlesSection() {
   const [articles, setArticles] = useState([]);
-  const [loaded, setLoaded] = useState(false);
+  const [loaded,   setLoaded]   = useState(false);
+  const [page,     setPage]     = useState(1);
 
   useEffect(() => {
     supabase
@@ -20,16 +23,17 @@ export default function ArticlesSection() {
       .catch((e) => { console.error('[ArticlesSection]', e); setLoaded(true); });
   }, []);
 
-  // Always render the section so id="articles" exists in the DOM for anchor links.
-  // Hide content until loaded and at least one article exists.
   if (!loaded || articles.length === 0) return <section id="articles" />;
+
+  const totalPages = Math.ceil(articles.length / PAGE_SIZE);
+  const visible    = articles.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <section className={styles.section} id="articles">
       <div className={styles.inner}>
         <h2 className={styles.heading}>Featured Articles</h2>
         <div className={styles.grid}>
-          {articles.map((article) => (
+          {visible.map((article) => (
             <div key={article.id} className={styles.card}>
               {article.image_url && (
                 <div className={styles.imageWrap}>
@@ -66,6 +70,26 @@ export default function ArticlesSection() {
             </div>
           ))}
         </div>
+
+        {totalPages > 1 && (
+          <div className={styles.pagination}>
+            <button
+              className={styles.pageBtn}
+              onClick={() => setPage((p) => p - 1)}
+              disabled={page <= 1}
+            >
+              ← Previous
+            </button>
+            <span className={styles.pageInfo}>Page {page} of {totalPages}</span>
+            <button
+              className={styles.pageBtn}
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= totalPages}
+            >
+              Next →
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
