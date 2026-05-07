@@ -76,14 +76,13 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
         all = [...all, ...data.listings];
       }
 
-      const header = buildCsvRow(['Title', 'Type', 'Price / Bid', 'Quantity Available', 'Total Quantity']);
+      const header = buildCsvRow(['Title', 'Type', 'Price / Bid', 'Quantity Available']);
       const rows = all.map((l) =>
         buildCsvRow([
           l.title,
           formatListingType(l.listingType),
           l.price ? parseFloat(l.price).toFixed(2) : '',
           l.quantityAvailable,
-          l.quantity,
         ])
       );
 
@@ -157,7 +156,7 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
                   <th className={styles.colImg} aria-label="Image" />
                   <th className={styles.colTitle}>Title</th>
                   <th className={styles.colType}>Type</th>
-                  <th className={styles.colQty}>Qty</th>
+                  <th className={styles.colQty}>Qty Avail</th>
                   <th className={styles.colPrice}>Price / Bid</th>
                   <th className={styles.colEnds}>Ends / Renews</th>
                 </tr>
@@ -192,12 +191,7 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
                         {formatListingType(l.listingType)}
                       </span>
                     </td>
-                    <td className={styles.colQty}>
-                      {l.quantityAvailable ?? l.quantity ?? '—'}
-                      {l.quantity && l.quantityAvailable !== l.quantity
-                        ? <span className={styles.qtyTotal}> / {l.quantity}</span>
-                        : null}
-                    </td>
+                    <td className={styles.colQty}>{l.quantityAvailable ?? '—'}</td>
                     <td className={styles.colPrice}>{formatPrice(l.price, l.currency)}</td>
                     <td className={styles.colEnds}>
                       {(() => {
