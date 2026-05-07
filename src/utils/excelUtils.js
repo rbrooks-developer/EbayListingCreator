@@ -362,7 +362,7 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
   const rows = listings.map((l) => [
     l.title,
     l.description,
-    l.categoryName ?? '',
+    l.category ?? '',
     l.quantity,
     l.condition,
     l.listingType === 'BuyItNow' ? 'Buy It Now' : l.listingType,
