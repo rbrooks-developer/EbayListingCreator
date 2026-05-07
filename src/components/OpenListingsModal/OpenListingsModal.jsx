@@ -76,17 +76,15 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
         all = [...all, ...data.listings];
       }
 
-      const header = buildCsvRow(['Item ID', 'Title', 'Type', 'Price', 'Quantity Available', 'Total Quantity', 'Ends/Renews', 'eBay URL']);
+      const header = buildCsvRow(['Title', 'Type', 'Price', 'Quantity Available', 'Total Quantity', 'Ends/Renews']);
       const rows = all.map((l) =>
         buildCsvRow([
-          l.itemId,
           l.title,
           formatListingType(l.listingType),
           l.price ? parseFloat(l.price).toFixed(2) : '',
           l.quantityAvailable,
           l.quantity,
           l.endTime ? `${l.listingType === 'Chinese' ? 'Ends' : 'Renews'} ${new Date(l.endTime).toLocaleString('en-US')}` : '',
-          l.itemId ? `${EBAY_ITEM_URL}${l.itemId}` : '',
         ])
       );
 

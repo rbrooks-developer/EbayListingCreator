@@ -1169,12 +1169,14 @@ async function handleEbaySellerListings({ token, sandbox = false, page = 1, entr
   </RequesterCredentials>
   <ActiveList>
     <Include>true</Include>
+    <Sort>ItemIDDescending</Sort>
     <Pagination>
       <EntriesPerPage>${safePerPage}</EntriesPerPage>
       <PageNumber>${safePage}</PageNumber>
     </Pagination>
   </ActiveList>
-  <GranularityLevel>Medium</GranularityLevel>
+  <GranularityLevel>Fine</GranularityLevel>
+  <DetailLevel>ReturnAll</DetailLevel>
 </GetMyeBaySellingRequest>`;
 
   const apiUrl = sandbox ? TRADING_API_SANDBOX_URL : TRADING_API_URL;
