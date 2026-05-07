@@ -76,7 +76,7 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
         all = [...all, ...data.listings];
       }
 
-      const header = buildCsvRow(['Title', 'Type', 'Price', 'Quantity Available', 'Total Quantity', 'Ends/Renews']);
+      const header = buildCsvRow(['Title', 'Type', 'Price / Bid', 'Quantity Available', 'Total Quantity']);
       const rows = all.map((l) =>
         buildCsvRow([
           l.title,
@@ -84,7 +84,6 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
           l.price ? parseFloat(l.price).toFixed(2) : '',
           l.quantityAvailable,
           l.quantity,
-          l.endTime ? `${l.listingType === 'Chinese' ? 'Ends' : 'Renews'} ${new Date(l.endTime).toLocaleString('en-US')}` : '',
         ])
       );
 
@@ -159,7 +158,7 @@ export default function OpenListingsModal({ accessToken, sandbox, onClose }) {
                   <th className={styles.colTitle}>Title</th>
                   <th className={styles.colType}>Type</th>
                   <th className={styles.colQty}>Qty</th>
-                  <th className={styles.colPrice}>Price</th>
+                  <th className={styles.colPrice}>Price / Bid</th>
                   <th className={styles.colEnds}>Ends / Renews</th>
                 </tr>
               </thead>
