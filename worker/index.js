@@ -521,7 +521,8 @@ async function handleCreateListing(body, env) {
     </ConditionDescriptors>`;
 
   // ── Shipping ──────────────────────────────────────────────────────────────
-  const hasPackageInfo = !!(listing.length && listing.width && listing.height && (listing.weightLbs || listing.weightOz));
+  const hasDims   = !!(listing.length && listing.width && listing.height);
+  const hasWeight = !!(listing.weightLbs || listing.weightOz);
   let shippingXml = '';
   let returnPolicyXml = '';
   let sellerProfilesXml = '';
@@ -536,7 +537,7 @@ async function handleCreateListing(body, env) {
       ${paymentProfileId    ? `<SellerPaymentProfile><PaymentProfileID>${paymentProfileId}</PaymentProfileID></SellerPaymentProfile>`       : ''}
     </SellerProfiles>`;
   } else {
-    shippingXml = hasPackageInfo ? `
+    shippingXml = (hasDims && hasWeight) ? `
     <ShippingDetails>
       <ShippingType>Calculated</ShippingType>
       <ShippingServiceOptions>
@@ -566,12 +567,14 @@ async function handleCreateListing(body, env) {
     </ReturnPolicy>`;
   }
 
-  const packageXml = hasPackageInfo ? `
+  // Always send weight when provided; include dims only when all three are present.
+  // Business policies with calculated shipping require weight even without dims.
+  const packageXml = hasWeight ? `
     <ShippingPackageDetails>
       <MeasurementUnit>English</MeasurementUnit>
-      <PackageDepth>${listing.height}</PackageDepth>
+      ${hasDims ? `<PackageDepth>${listing.height}</PackageDepth>
       <PackageLength>${listing.length}</PackageLength>
-      <PackageWidth>${listing.width}</PackageWidth>
+      <PackageWidth>${listing.width}</PackageWidth>` : ''}
       <WeightMajor>${parseInt(listing.weightLbs) || 0}</WeightMajor>
       <WeightMinor>${parseInt(listing.weightOz) || 0}</WeightMinor>
     </ShippingPackageDetails>` : '';
