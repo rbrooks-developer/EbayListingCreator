@@ -1038,9 +1038,9 @@ async function handleStripeWebhook(request, env) {
           ? new Date(sub.current_period_end * 1000).toISOString()
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-        // Fetch stored subscription BEFORE updating so we can detect a period change
+        // Fetch stored subscription BEFORE updating so we can detect period/tier changes
         const storedRes = await supabaseFetch(
-          `/user_subscriptions?stripe_customer_id=eq.${customerId}&select=user_id,period_start`,
+          `/user_subscriptions?stripe_customer_id=eq.${customerId}&select=user_id,period_start,tier`,
           {}, env
         ).catch(() => null);
         const stored = Array.isArray(storedRes?.data) ? storedRes.data[0] : null;
@@ -1058,16 +1058,19 @@ async function handleStripeWebhook(request, env) {
         }, env);
         console.log('webhook: subscription updated result', updRes.status, JSON.stringify(updRes.data));
 
-        // Reset usage counter if the billing period has advanced (monthly renewal)
-        if (stored?.user_id && sub.current_period_start) {
-          const storedMs = stored.period_start ? new Date(stored.period_start).getTime() : 0;
-          const newMs    = sub.current_period_start * 1000;
-          if (newMs > storedMs) {
+        // Reset usage counter on: new billing period, tier change, or cancellation
+        if (stored?.user_id) {
+          const storedMs     = stored.period_start ? new Date(stored.period_start).getTime() : 0;
+          const newMs        = sub.current_period_start ? sub.current_period_start * 1000 : 0;
+          const periodChange = newMs > storedMs;
+          const tierChange   = stored.tier && stored.tier !== tier;
+          const cancelled    = status === 'canceled';
+          if (periodChange || tierChange || cancelled) {
             await supabaseFetch(`/usage_counters?user_id=eq.${stored.user_id}`, {
               method: 'PATCH',
               body:   JSON.stringify({ listings_used: 0, period_start: periodStart }),
             }, env).catch(() => {});
-            console.log('webhook: usage counter reset (new billing period)', stored.user_id);
+            console.log('webhook: usage counter reset', { userId: stored.user_id, periodChange, tierChange, cancelled });
           }
         }
         break;
@@ -1077,7 +1080,14 @@ async function handleStripeWebhook(request, env) {
         const sub        = event.data.object;
         const customerId = sub.customer;
 
-        console.log('webhook: subscription deleted', { customerId });
+        // Look up user before updating so we have user_id for usage reset
+        const deletedStoredRes = await supabaseFetch(
+          `/user_subscriptions?stripe_customer_id=eq.${customerId}&select=user_id`,
+          {}, env
+        ).catch(() => null);
+        const deletedUserId = Array.isArray(deletedStoredRes?.data) ? deletedStoredRes.data[0]?.user_id : null;
+
+        console.log('webhook: subscription deleted', { customerId, userId: deletedUserId });
         const delRes = await supabaseFetch(`/user_subscriptions?stripe_customer_id=eq.${customerId}`, {
           method: 'PATCH',
           body: JSON.stringify({
@@ -1087,6 +1097,15 @@ async function handleStripeWebhook(request, env) {
           }),
         }, env);
         console.log('webhook: subscription deleted result', delRes.status, JSON.stringify(delRes.data));
+
+        // Reset usage counter — subscription ended, start fresh on free tier
+        if (deletedUserId) {
+          await supabaseFetch(`/usage_counters?user_id=eq.${deletedUserId}`, {
+            method: 'PATCH',
+            body:   JSON.stringify({ listings_used: 0, period_start: new Date().toISOString() }),
+          }, env).catch(() => {});
+          console.log('webhook: usage counter reset (subscription deleted)', deletedUserId);
+        }
         break;
       }
 
