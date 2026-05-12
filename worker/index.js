@@ -945,7 +945,9 @@ async function handleBillingPortal(body, env) {
   const billing = await getUserBilling(userId, env);
   if (!billing.stripeCustomerId) return err('No billing account found', 404, env);
 
-  const origin     = env.ALLOWED_ORIGIN || 'https://createmylistings.com';
+  const origin     = (env.ALLOWED_ORIGIN && env.ALLOWED_ORIGIN.startsWith('http'))
+    ? env.ALLOWED_ORIGIN
+    : 'https://createmylistings.com';
   const portalRes  = await stripeFetch('/billing_portal/sessions', {
     customer:    billing.stripeCustomerId,
     return_url:  origin,
