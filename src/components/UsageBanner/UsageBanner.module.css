@@ -101,3 +101,22 @@
 }
 
 .btnBusiness:hover:not(:disabled) { background: #6d28d9; }
+
+.btnManage {
+  padding: 0.35rem 0.85rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btnManage:hover:not(:disabled) {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.btnManage:disabled { opacity: 0.6; cursor: not-allowed; }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
-import { startCheckout } from '../../services/billingService.js';
+import { startCheckout, openCustomerPortal } from '../../services/billingService.js';
 import { useTierPrices, fmtPrice } from '../../hooks/useTierPrices.js';
 import styles from './UsageBanner.module.css';
 
@@ -19,6 +19,7 @@ export default function UsageBanner() {
   const tierPrices = useTierPrices();
   const [upgrading, setUpgrading] = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const proPrice      = tierPrices?.pro?.price      != null ? fmtPrice(tierPrices.pro.price)      : '$9.99';
   const businessPrice = tierPrices?.business?.price != null ? fmtPrice(tierPrices.business.price) : '$25';
@@ -86,6 +87,18 @@ export default function UsageBanner() {
               {`Business — ${businessPrice}/mo`}
             </button>
           )}
+        </div>
+      )}
+
+      {tier !== 'free' && (
+        <div className={styles.right}>
+          <button
+            className={styles.btnManage}
+            disabled={portalLoading}
+            onClick={async () => { setPortalLoading(true); await openCustomerPortal().catch(() => setPortalLoading(false)); }}
+          >
+            {portalLoading ? 'Redirecting…' : 'Manage / Cancel Membership'}
+          </button>
         </div>
       )}
     </div>
