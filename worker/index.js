@@ -951,7 +951,7 @@ async function handleBillingPortal(body, env) {
     return_url:  origin,
   }, env);
 
-  if (!portalRes.ok) return err('Failed to create portal session', 500, env);
+  if (!portalRes.ok) return err(`Failed to create portal session: ${portalRes.data?.error?.message ?? portalRes.status}`, 500, env);
   return ok({ url: portalRes.data.url }, env);
 }
 

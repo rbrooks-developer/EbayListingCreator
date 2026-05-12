@@ -20,6 +20,7 @@ export default function UsageBanner() {
   const [upgrading, setUpgrading] = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
   const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError,   setPortalError]   = useState('');
 
   const proPrice      = tierPrices?.pro?.price      != null ? fmtPrice(tierPrices.pro.price)      : '$9.99';
   const businessPrice = tierPrices?.business?.price != null ? fmtPrice(tierPrices.business.price) : '$25';
@@ -92,10 +93,20 @@ export default function UsageBanner() {
 
       {tier !== 'free' && (
         <div className={styles.right}>
+          {portalError && <span className={styles.portalError}>{portalError}</span>}
           <button
             className={styles.btnManage}
             disabled={portalLoading}
-            onClick={async () => { setPortalLoading(true); await openCustomerPortal().catch(() => setPortalLoading(false)); }}
+            onClick={async () => {
+              setPortalLoading(true);
+              setPortalError('');
+              try {
+                await openCustomerPortal();
+              } catch (e) {
+                setPortalError(e.message || 'Failed to open billing portal. Please try again.');
+                setPortalLoading(false);
+              }
+            }}
           >
             {portalLoading ? 'Redirecting…' : 'Manage / Cancel Membership'}
           </button>

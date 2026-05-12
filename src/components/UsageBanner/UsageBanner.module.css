@@ -80,6 +80,11 @@
   font-size: 0.8rem;
 }
 
+.portalError {
+  color: #dc2626;
+  font-size: 0.8rem;
+}
+
 .btnUpgrade {
   padding: 6px 14px;
   background: #2563eb;
