@@ -41,7 +41,7 @@ function buildFeatures(maxImages) {
 const STEPS = [
   {
     number: '01',
-    label: 'Connect to eBay',
+    label: 'Authorize Your eBay Account',
     detail: 'Enter your ZIP code and click Connect. You\'ll be taken to eBay to authorize the app — then we\'ll download your categories, shipping services, and fulfillment policies automatically.',
   },
   {
@@ -51,7 +51,7 @@ const STEPS = [
   },
   {
     number: '03',
-    label: 'Post to eBay',
+    label: 'Submit Listings to eBay',
     detail: 'Review your listings in the grid, then post them individually or all at once. Each row updates in real time showing the eBay listing ID on success or the error message if something needs fixing.',
   },
 ];
@@ -154,7 +154,7 @@ export default function HomePage({ onSignInClick }) {
       <section className={styles.features}>
         <div className={styles.sectionInner}>
           <h2 className={styles.sectionTitle}>Everything you need</h2>
-          <p className={styles.sectionSubtitle}>Everything you need to go from zero to live eBay listings.</p>
+          <p className={styles.sectionSubtitle}>All the tools to go from zero to live eBay listings in your browser.</p>
           <div className={styles.featureGrid}>
             {FEATURES.map((f) => (
               <article key={f.title} className={styles.featureCard}>

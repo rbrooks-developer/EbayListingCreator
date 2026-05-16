@@ -270,6 +270,7 @@ function MainLayout({
     <>
       <Helmet>
         <title>{pageTitle}</title>
+        <link rel="canonical" href="https://createmylistings.com/" />
       </Helmet>
 
       <SiteHeader onSignInClick={() => setAuthModalOpen(true)} />

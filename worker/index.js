@@ -59,6 +59,7 @@ function getCorsHeaders(env) {
     'Access-Control-Allow-Origin':  env.ALLOWED_ORIGIN || '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Strict-Transport-Security':    'max-age=31536000; includeSubDomains',
   };
 }
 

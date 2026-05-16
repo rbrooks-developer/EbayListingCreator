@@ -77,13 +77,7 @@ export default function ArticlePage() {
               {article.image_url && <meta property="og:image" content={article.image_url} />}
               {article.published_at && <meta property="article:published_time" content={article.published_at} />}
 
-              {/* Twitter / X */}
-              <meta name="twitter:card"        content="summary_large_image" />
-              <meta name="twitter:title"       content={article.title} />
-              <meta name="twitter:description" content={article.excerpt ?? ''} />
-              {article.image_url && <meta name="twitter:image" content={article.image_url} />}
-
-              {/* Article structured data */}
+{/* Article structured data */}
               <script type="application/ld+json">{JSON.stringify({
                 '@context': 'https://schema.org',
                 '@type': 'BlogPosting',

@@ -453,7 +453,7 @@ export default function ListingGrid({
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
               </div>
-              <h3 className={styles.lockedTitle}>Connect Your eBay Account to Get Started</h3>
+              <h3 className={styles.lockedTitle}>Authorize eBay to Unlock Your Workspace</h3>
               <p className={styles.lockedText}>Complete Step 1 above to unlock your listing workspace.</p>
               <a
                 href="#oauth"

@@ -76,11 +76,33 @@ function articleLastmod(article) {
   return dates.sort().at(-1) ?? TODAY;
 }
 
+/** Returns true only if the URL responds with HTTP 200. */
+async function urlResponds200(url) {
+  try {
+    const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(8000) });
+    return res.status === 200;
+  } catch {
+    return false;
+  }
+}
+
 async function main() {
   const [articles, homeLastmod] = await Promise.all([
     fetchArticles(),
     Promise.resolve(getLastCommitDate()),
   ]);
+
+  // Validate article URLs — GitHub Pages returns 404 for deep routes without SSR
+  const validArticles = [];
+  for (const a of articles.filter((a) => a.slug)) {
+    const url = `${SITE_URL}/articles/${a.slug}`;
+    const ok  = await urlResponds200(url);
+    if (ok) {
+      validArticles.push(a);
+    } else {
+      console.warn(`[sitemap] Skipping ${url} — did not return 200`);
+    }
+  }
 
   const urls = [
     urlEntry({
@@ -89,16 +111,14 @@ async function main() {
       changefreq: 'weekly',
       priority:   '1.0',
     }),
-    ...articles
-      .filter((a) => a.slug)
-      .map((a) =>
-        urlEntry({
-          loc:        `${SITE_URL}/articles/${a.slug}`,
-          lastmod:    articleLastmod(a),
-          changefreq: 'monthly',
-          priority:   '0.7',
-        })
-      ),
+    ...validArticles.map((a) =>
+      urlEntry({
+        loc:        `${SITE_URL}/articles/${a.slug}`,
+        lastmod:    articleLastmod(a),
+        changefreq: 'monthly',
+        priority:   '0.7',
+      })
+    ),
   ];
 
   const xml = [
@@ -110,7 +130,8 @@ async function main() {
 
   const outPath = resolve(__dirname, '../public/sitemap.xml');
   writeFileSync(outPath, xml, 'utf8');
-  console.log(`[sitemap] Written ${urls.length} URL(s) — home lastmod: ${homeLastmod}`);
+  const skipped = articles.filter((a) => a.slug).length - validArticles.length;
+  console.log(`[sitemap] Written ${urls.length} URL(s) — home lastmod: ${homeLastmod}${skipped ? ` (skipped ${skipped} non-200 article URLs)` : ''}`);
 }
 
 main().catch((e) => {
