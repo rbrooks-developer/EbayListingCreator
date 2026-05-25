@@ -67,8 +67,8 @@
 
 .removeWrap {
   display: flex;
-  align-items: flex-end;
-  padding-bottom: 2px;
+  align-items: flex-start;
+  padding-top: 18px;
   margin-left: auto;
 }
 

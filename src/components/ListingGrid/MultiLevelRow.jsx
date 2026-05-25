@@ -159,6 +159,11 @@ export default function MultiLevelRow({
             aria-label="Description"
           />
         </div>
+        <div className={styles.removeWrap}>
+          <button className={gridStyles.btnRemove} onClick={() => onRemove(listing.id)} aria-label="Remove listing" title="Remove this row">
+            &#x2715;
+          </button>
+        </div>
       </div>
 
       {/* ── Line 2: Category · Specifics · Condition · Type · Qty · Price/Auction · Best Offer ── */}
@@ -266,11 +271,6 @@ export default function MultiLevelRow({
             {(listing.images ?? []).length > 0
               ? `${listing.images.length} image${listing.images.length !== 1 ? 's' : ''}`
               : '+ Images'}
-          </button>
-        </div>
-        <div className={styles.removeWrap}>
-          <button className={gridStyles.btnRemove} onClick={() => onRemove(listing.id)} aria-label="Remove listing" title="Remove this row">
-            &#x2715;
           </button>
         </div>
       </div>

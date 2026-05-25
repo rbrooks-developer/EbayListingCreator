@@ -419,14 +419,13 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  color: var(--text-muted);
+  color: var(--error);
   font-size: 0.75rem;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s;
   margin: 0 auto;
 }
 
 .btnRemove:hover {
-  color: var(--error);
   background: var(--error-bg);
   border-color: #ef9a9a;
 }
