@@ -6,6 +6,7 @@ import { applyRules } from '../../utils/rulesEngine.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
 import useListingDefaults, { countDefaults, applyListingDefaults } from '../../hooks/useListingDefaults.js';
+import { useLocalStorage } from '../../hooks/useLocalStorage.js';
 import UsageBanner from '../UsageBanner/UsageBanner.jsx';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
 import AspectsModal from '../AspectsModal/AspectsModal.jsx';
@@ -14,7 +15,39 @@ import ImageManagerModal from '../ImageManagerModal/ImageManagerModal.jsx';
 import BulkImageModal from '../BulkImageModal/BulkImageModal.jsx';
 import ShippingPicker from '../ShippingPicker/ShippingPicker.jsx';
 import DefaultValuesModal from '../DefaultValuesModal/DefaultValuesModal.jsx';
+import MultiLevelRow from './MultiLevelRow.jsx';
+import TabbedRow from './TabbedRow.jsx';
 import styles from './ListingGrid.module.css';
+
+function StandardViewIcon() {
+  return (
+    <svg width="16" height="14" viewBox="0 0 16 14" fill="none" aria-hidden="true">
+      <rect x="0.75" y="0.75" width="14.5" height="2.5" rx="0.75" fill="currentColor" opacity="0.5"/>
+      <rect x="0.75" y="5.25" width="14.5" height="2" rx="0.75" fill="currentColor"/>
+      <rect x="0.75" y="9.25" width="14.5" height="2" rx="0.75" fill="currentColor"/>
+    </svg>
+  );
+}
+
+function MultiLevelViewIcon() {
+  return (
+    <svg width="16" height="14" viewBox="0 0 16 14" fill="none" aria-hidden="true">
+      <rect x="0.75" y="0.75" width="14.5" height="4.5" rx="1.25" stroke="currentColor" strokeWidth="1.25"/>
+      <line x1="3" y1="3" x2="13" y2="3" stroke="currentColor" strokeWidth="0.75"/>
+      <rect x="0.75" y="7.75" width="14.5" height="4.5" rx="1.25" stroke="currentColor" strokeWidth="1.25"/>
+      <line x1="3" y1="10" x2="13" y2="10" stroke="currentColor" strokeWidth="0.75"/>
+    </svg>
+  );
+}
+
+function TabbedViewIcon() {
+  return (
+    <svg width="16" height="14" viewBox="0 0 16 14" fill="none" aria-hidden="true">
+      <rect x="0.75" y="4.25" width="14.5" height="9" rx="1.25" stroke="currentColor" strokeWidth="1.25"/>
+      <rect x="0.75" y="0.75" width="5.5" height="4.25" rx="1" fill="currentColor" opacity="0.75"/>
+    </svg>
+  );
+}
 
 /**
  * Client-side pre-flight validation before a listing is sent to the eBay API.
@@ -140,6 +173,12 @@ export default function ListingGrid({
   const { usage, refresh: refreshUsage } = useSubscription();
   const maxImages = usage?.maxImages ?? 24;
   const { defaults, saveDefaults } = useListingDefaults();
+
+  const [viewMode, setViewMode] = useLocalStorage(
+    'listingGridViewMode',
+    window.innerWidth < 768 ? 'multilevel' : 'standard'
+  );
+  const [activeTab, setActiveTab] = useLocalStorage('listingGridActiveTab', 'details');
 
   const [importErrors, setImportErrors] = useState([]);
   const [importStatus, setImportStatus] = useState('');
@@ -533,6 +572,29 @@ export default function ListingGrid({
             />
           </div>
           <div className={styles.toolbarRight}>
+            <div className={styles.viewToggle}>
+              <button
+                title="Standard view"
+                className={`${styles.viewBtn} ${viewMode === 'standard' ? styles.viewBtnActive : ''}`}
+                onClick={() => setViewMode('standard')}
+              >
+                <StandardViewIcon />
+              </button>
+              <button
+                title="Multi-level view"
+                className={`${styles.viewBtn} ${viewMode === 'multilevel' ? styles.viewBtnActive : ''}`}
+                onClick={() => setViewMode('multilevel')}
+              >
+                <MultiLevelViewIcon />
+              </button>
+              <button
+                title="Tabbed view"
+                className={`${styles.viewBtn} ${viewMode === 'tabbed' ? styles.viewBtnActive : ''}`}
+                onClick={() => setViewMode('tabbed')}
+              >
+                <TabbedViewIcon />
+              </button>
+            </div>
             {hasListings && (
               <>
                 <button className={styles.btnOutline} onClick={handleExport}>Export Excel</button>
@@ -552,61 +614,119 @@ export default function ListingGrid({
         )}
 
         {/* ── Grid ── */}
-        {hasListings ? (
-          <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.colStatus}>Status</th>
-                  <th className={styles.colTitle}>Title</th>
-                  <th className={styles.colDescription}>Description</th>
-                  <th className={styles.colCategory}>Category</th>
-                  <th className={styles.colSpecifics}>Specifics</th>
-                  <th className={styles.colDimension}>Qty</th>
-                  <th className={styles.colCondition}>Condition</th>
-                  <th className={styles.colType}>Listing Type</th>
-                  <th className={styles.colBestOffer}>Price ($)</th>
-                  <th className={styles.colAuctionStartPrice}>Start Price ($)</th>
-                  <th className={styles.colAuctionDays}>Auction Days</th>
-                  <th className={styles.colBestOffer}>Best Offer ($)</th>
-                  <th className={styles.colShipPolicy}>Ship Policy</th>
-                  <th className={styles.colShipping}>Shipping Method</th>
-                  <th className={styles.colDimension}>Length (in)</th>
-                  <th className={styles.colDimension}>Width (in)</th>
-                  <th className={styles.colDimension}>Height (in)</th>
-                  <th className={styles.colWeight}>Pounds</th>
-                  <th className={styles.colWeight}>Ounces</th>
-                  <th className={styles.colImages}>Images</th>
-                  <th className={styles.colActions} aria-label="Actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {listings.map((listing) => (
-                  <ListingRow
-                    key={listing.id}
-                    listing={listing}
-                    categories={categories}
-                    shippingServices={shippingServices}
-                    fulfillmentPolicies={fulfillmentPolicies}
-                    aspectsCache={aspectsCache}
-                    tcCategoryIds={tcCategoryIds}
-                    onUpdate={updateField}
-                    onUpdateCategory={updateCategory}
-                    onRemove={removeRow}
-                    onOpenAspects={setAspectsListingId}
-                    onSetTcType={setTcConditionType}
-                    onOpenTcModal={openTcModal}
-                    onPost={handlePost}
-                    onOpenImages={() => setImageModalListingId(listing.id)}
-                    hasCategories={hasCategories}
-                    canPost={!!accessToken}
-                  />
-                ))}
-              </tbody>
-            </table>
+        {viewMode === 'standard' && (
+          hasListings ? (
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th className={styles.colStatus}>Status</th>
+                    <th className={styles.colTitle}>Title</th>
+                    <th className={styles.colDescription}>Description</th>
+                    <th className={styles.colCategory}>Category</th>
+                    <th className={styles.colSpecifics}>Specifics</th>
+                    <th className={styles.colDimension}>Qty</th>
+                    <th className={styles.colCondition}>Condition</th>
+                    <th className={styles.colType}>Listing Type</th>
+                    <th className={styles.colBestOffer}>Price ($)</th>
+                    <th className={styles.colAuctionStartPrice}>Start Price ($)</th>
+                    <th className={styles.colAuctionDays}>Auction Days</th>
+                    <th className={styles.colBestOffer}>Best Offer ($)</th>
+                    <th className={styles.colShipPolicy}>Ship Policy</th>
+                    <th className={styles.colShipping}>Shipping Method</th>
+                    <th className={styles.colDimension}>Length (in)</th>
+                    <th className={styles.colDimension}>Width (in)</th>
+                    <th className={styles.colDimension}>Height (in)</th>
+                    <th className={styles.colWeight}>Pounds</th>
+                    <th className={styles.colWeight}>Ounces</th>
+                    <th className={styles.colImages}>Images</th>
+                    <th className={styles.colActions} aria-label="Actions" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {listings.map((listing) => (
+                    <ListingRow
+                      key={listing.id}
+                      listing={listing}
+                      categories={categories}
+                      shippingServices={shippingServices}
+                      fulfillmentPolicies={fulfillmentPolicies}
+                      aspectsCache={aspectsCache}
+                      tcCategoryIds={tcCategoryIds}
+                      onUpdate={updateField}
+                      onUpdateCategory={updateCategory}
+                      onRemove={removeRow}
+                      onOpenAspects={setAspectsListingId}
+                      onSetTcType={setTcConditionType}
+                      onOpenTcModal={openTcModal}
+                      onPost={handlePost}
+                      onOpenImages={() => setImageModalListingId(listing.id)}
+                      hasCategories={hasCategories}
+                      canPost={!!accessToken}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState onAdd={addRow} onImport={() => fileInputRef.current?.click()} />
+          )
+        )}
+
+        {viewMode === 'multilevel' && (
+          <div className={styles.mlContainer}>
+            {listings.map((listing) => (
+              <MultiLevelRow
+                key={listing.id}
+                listing={listing}
+                categories={categories}
+                shippingServices={shippingServices}
+                fulfillmentPolicies={fulfillmentPolicies}
+                aspectsCache={aspectsCache}
+                tcCategoryIds={tcCategoryIds}
+                onUpdate={updateField}
+                onUpdateCategory={updateCategory}
+                onRemove={removeRow}
+                onOpenAspects={setAspectsListingId}
+                onSetTcType={setTcConditionType}
+                onOpenTcModal={openTcModal}
+                onPost={handlePost}
+                onOpenImages={() => setImageModalListingId(listing.id)}
+                hasCategories={hasCategories}
+                canPost={!!accessToken}
+              />
+            ))}
+            {!hasListings && <EmptyState onAdd={addRow} onImport={() => fileInputRef.current?.click()} />}
           </div>
-        ) : (
-          <EmptyState onAdd={addRow} onImport={() => fileInputRef.current?.click()} />
+        )}
+
+        {viewMode === 'tabbed' && (
+          <div className={styles.tabbedContainer}>
+            <TabBar activeTab={activeTab} onChange={setActiveTab} />
+            {listings.map((listing) => (
+              <TabbedRow
+                key={listing.id}
+                listing={listing}
+                activeTab={activeTab}
+                categories={categories}
+                shippingServices={shippingServices}
+                fulfillmentPolicies={fulfillmentPolicies}
+                aspectsCache={aspectsCache}
+                tcCategoryIds={tcCategoryIds}
+                onUpdate={updateField}
+                onUpdateCategory={updateCategory}
+                onRemove={removeRow}
+                onOpenAspects={setAspectsListingId}
+                onSetTcType={setTcConditionType}
+                onOpenTcModal={openTcModal}
+                onPost={handlePost}
+                onOpenImages={() => setImageModalListingId(listing.id)}
+                hasCategories={hasCategories}
+                canPost={!!accessToken}
+              />
+            ))}
+            {!hasListings && <EmptyState onAdd={addRow} onImport={() => fileInputRef.current?.click()} />}
+          </div>
         )}
 
         {hasListings && (
@@ -1142,6 +1262,30 @@ function EmptyState({ onAdd, onImport }) {
         <button className={styles.btnPrimary} onClick={onAdd}>+ Add Row</button>
         <button className={styles.btnOutline} onClick={onImport}>Import Excel / CSV</button>
       </div>
+    </div>
+  );
+}
+
+// ── TabBar ────────────────────────────────────────────────────────────────────
+
+function TabBar({ activeTab, onChange }) {
+  const tabs = [
+    { key: 'details',  label: 'Details' },
+    { key: 'pricing',  label: 'Pricing' },
+    { key: 'shipping', label: 'Shipping' },
+    { key: 'images',   label: 'Images' },
+  ];
+  return (
+    <div className={styles.tabBar}>
+      {tabs.map(({ key, label }) => (
+        <button
+          key={key}
+          className={`${styles.tabBtn} ${activeTab === key ? styles.tabBtnActive : ''}`}
+          onClick={() => onChange(key)}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 }

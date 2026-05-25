@@ -695,3 +695,82 @@
 
 .footerWarn { color: var(--warning); font-weight: 600; }
 .footerOk   { color: var(--success); font-weight: 600; }
+
+/* ── View toggle (3-button group in toolbar) ─────────────────────────────── */
+
+.viewToggle {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.viewBtn {
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.viewBtn:hover { background: var(--bg-light); color: var(--text-primary); }
+.viewBtn + .viewBtn { border-left: 1px solid var(--border); }
+
+.viewBtnActive {
+  background: var(--ebay-blue);
+  color: #fff;
+}
+
+.viewBtnActive:hover { background: #2a55e0; color: #fff; }
+
+/* ── Multi-level / Tabbed containers ─────────────────────────────────────── */
+
+.mlContainer,
+.tabbedContainer {
+  padding: 8px 10px;
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  min-height: 300px;
+}
+
+/* ── Tabbed view tab bar ──────────────────────────────────────────────────── */
+
+.tabBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0 2px;
+  margin-bottom: 6px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-white, #fff);
+  z-index: 2;
+}
+
+.tabBtn {
+  padding: 7px 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+
+.tabBtn:hover { color: var(--text-primary); }
+
+.tabBtnActive {
+  color: var(--ebay-blue);
+  border-bottom-color: var(--ebay-blue);
+  font-weight: 600;
+}
