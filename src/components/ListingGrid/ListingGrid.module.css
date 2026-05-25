@@ -419,8 +419,9 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  color: var(--error);
-  font-size: 0.75rem;
+  color: #ef4444;
+  font-size: 0.9rem;
+  font-weight: 700;
   transition: background 0.15s, border-color 0.15s;
   margin: 0 auto;
 }
