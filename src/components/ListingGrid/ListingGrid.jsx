@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { createEmptyListing, parseListingFile, exportListingsToExcel, generateTCTemplate } from '../../utils/excelUtils.js';
-import { createListing, fetchAspectsForCategory, fetchConditionPolicies } from '../../services/ebayApi.js';
+import { createListing, fetchAspectsForCategory, fetchConditionPolicies, fetchSellerListings } from '../../services/ebayApi.js';
 import { applyRules } from '../../utils/rulesEngine.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
@@ -320,19 +320,52 @@ export default function ListingGrid({
     }
   }
 
+  async function fetchActiveTitles() {
+    const titles = new Set();
+    let page = 1;
+    try {
+      while (true) {
+        const data = await fetchSellerListings(accessToken, sandbox, page);
+        (data.listings ?? []).forEach((l) => {
+          if (l.title) titles.add(l.title.toLowerCase().trim());
+        });
+        if (page >= (data.totalPages ?? 1)) break;
+        page++;
+      }
+    } catch {
+      // eBay API unavailable — fail-open so posting isn't permanently blocked
+    }
+    return titles;
+  }
+
   async function handlePost(id) {
     const listing = listings.find((l) => l.id === id);
     if (!listing || !accessToken) return;
 
-    // Client-side validation before hitting the API
-    const issues = validateListing(listing);
-    if (issues.length) {
-      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'error', statusError: issues.join(' · ') }));
-      return;
+    const isRevision = !!listing.listingId;
+
+    // Show spinner immediately so the user sees feedback during the live check
+    onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'submitting', statusError: '' }));
+
+    // Live duplicate check against active eBay listings — new listings only
+    if (!isRevision) {
+      const activeTitles = await fetchActiveTitles();
+      if (activeTitles.has(listing.title.toLowerCase().trim())) {
+        onChange(listingsRef.current.map((l) => l.id !== id ? l : {
+          ...l,
+          postStatus: 'error',
+          statusError: 'Duplicate: a listing with this title is already active on eBay.',
+        }));
+        return;
+      }
     }
 
-    const isRevision = !!listing.listingId;
-    onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'submitting', statusError: '' }));
+    // Client-side validation
+    const issues = validateListing(listing);
+    if (issues.length) {
+      onChange(listingsRef.current.map((l) => l.id !== id ? l : { ...l, postStatus: 'error', statusError: issues.join(' · ') }));
+      return;
+    }
 
     const schedUtc = (!isRevision && scheduledTime) ? scheduledTime.toISOString() : null;
     const payload  = schedUtc ? { ...listing, scheduledTime: schedUtc } : listing;
@@ -343,13 +376,13 @@ export default function ListingGrid({
       if (schedUtc && result._debug) console.log('[schedule debug]', result._debug);
       const { listingId } = result;
       const newStatus = isRevision ? 'updated' : (schedUtc ? 'scheduled' : 'success');
-      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: newStatus, listingId, ...(schedUtc ? { postedScheduledTime: schedUtc } : {}) }));
+      onChange(listingsRef.current.map((l) => l.id !== id ? l : { ...l, postStatus: newStatus, listingId, ...(schedUtc ? { postedScheduledTime: schedUtc } : {}) }));
       if (!isRevision) refreshUsage();
     } catch (e) {
       const errMsg = e.message === 'limit_reached'
         ? 'Monthly listing limit reached. Upgrade your plan to continue posting.'
         : e.message;
-      onChange(listings.map((l) => l.id !== id ? l : { ...l, postStatus: 'error', statusError: errMsg }));
+      onChange(listingsRef.current.map((l) => l.id !== id ? l : { ...l, postStatus: 'error', statusError: errMsg }));
     }
   }
 
@@ -360,21 +393,33 @@ export default function ListingGrid({
 
     setIsPostingAll(true);
     const schedUtc = scheduledTime ? scheduledTime.toISOString() : null;
-
-    // Mark all pending as submitting at once
-    onChange(listingsRef.current.map((l) =>
-      pending.some((p) => p.id === l.id) ? { ...l, postStatus: 'submitting', statusError: '' } : l
-    ));
-
-    // Post sequentially to avoid hammering the API
     const supabaseToken = await getAccessToken();
+
+    // Fetch all active eBay listing titles once for the whole batch
+    const activeTitles = await fetchActiveTitles();
+
     for (const listing of pending) {
-      // Client-side validation before hitting the API
+      const isRevision = !!listing.listingId;
+
+      // Live duplicate check — only for new listings
+      if (!isRevision && activeTitles.has(listing.title.toLowerCase().trim())) {
+        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : {
+          ...l,
+          postStatus: 'error',
+          statusError: 'Duplicate: a listing with this title is already active on eBay.',
+        }));
+        continue;
+      }
+
+      // Validate before touching status — skip with error if invalid
       const issues = validateListing(listing);
       if (issues.length) {
         onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'error', statusError: issues.join(' · ') }));
         continue;
       }
+
+      // Mark only this listing as submitting, then wait for it to finish
+      onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'submitting', statusError: '' }));
 
       const payload = schedUtc ? { ...listing, scheduledTime: schedUtc } : listing;
       try {
@@ -386,7 +431,7 @@ export default function ListingGrid({
           ? 'Monthly listing limit reached. Upgrade your plan to continue posting.'
           : e.message;
         onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'error', statusError: errMsg }));
-        if (e.message === 'limit_reached') break; // no point posting further
+        if (e.message === 'limit_reached') break;
       }
     }
     refreshUsage();
