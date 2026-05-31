@@ -518,6 +518,30 @@ export default function ListingGrid({
     exportListingsToExcel(listings);
   }
 
+  function applyDefaultsToAll() {
+    const d = defaults;
+    const next = listings.map((listing) => {
+      const patch = {};
+      if (d.categoryId) {
+        patch.categoryId   = d.categoryId;
+        patch.categoryName = d.categoryName || '';
+        if (listing.categoryId !== d.categoryId) patch.aspects = {};
+      }
+      if (d.fulfillmentPolicyId) patch.fulfillmentPolicyId = d.fulfillmentPolicyId;
+      if (d.shippingService)     patch.shippingService     = d.shippingService;
+      if (Number(d.length)    > 0) patch.length    = d.length;
+      if (Number(d.width)     > 0) patch.width     = d.width;
+      if (Number(d.height)    > 0) patch.height    = d.height;
+      if (Number(d.weightLbs) > 0) patch.weightLbs = d.weightLbs;
+      if (Number(d.weightOz)  > 0) patch.weightOz  = d.weightOz;
+      return Object.keys(patch).length ? { ...listing, ...patch } : listing;
+    });
+    onChange(next);
+    if (d.categoryId) {
+      prewarmAspects([d.categoryId]).then(() => onChange([...listingsRef.current]));
+    }
+  }
+
   const hasListings = listings.length > 0;
   const activeListingForModal = listings.find((l) => l.id === aspectsListingId) ?? null;
   const tcModalListing = listings.find((l) => l.id === tcModalListingId) ?? null;
@@ -826,6 +850,8 @@ export default function ListingGrid({
           fulfillmentPolicies={fulfillmentPolicies}
           shippingServices={shippingServices}
           onPrewarm={(ids) => prewarmAspects(ids).then(() => onChange([...listingsRef.current]))}
+          onApplyToAll={applyDefaultsToAll}
+          listingCount={listings.length}
           onClose={() => setDefaultsOpen(false)}
         />
       )}

@@ -11,6 +11,8 @@ export default function DefaultValuesModal({
   fulfillmentPolicies,
   shippingServices,
   onPrewarm,
+  onApplyToAll,
+  listingCount,
   onClose,
 }) {
   const [length,    setLength]    = useState(defaults.length    ?? '');
@@ -18,8 +20,9 @@ export default function DefaultValuesModal({
   const [height,    setHeight]    = useState(defaults.height    ?? '');
   const [weightLbs, setWeightLbs] = useState(defaults.weightLbs ?? '');
   const [weightOz,  setWeightOz]  = useState(defaults.weightOz  ?? '');
-  const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+  const [applied, setApplied] = useState(false);
 
   // Keep local numeric state in sync if defaults are changed externally
   useEffect(() => {
@@ -82,7 +85,7 @@ export default function DefaultValuesModal({
         <div className={styles.header}>
           <div>
             <h2 className={styles.title}>Default Values</h2>
-            <p className={styles.subtitle}>Applied to new rows and blank cells when importing a spreadsheet.</p>
+            <p className={styles.subtitle}>Applied to new rows and blank cells when importing. Use "Apply to All" to push changes to existing listings.</p>
           </div>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
         </div>
@@ -236,7 +239,22 @@ export default function DefaultValuesModal({
           <span className={saving ? styles.savingText : styles.savedText}>
             {saving ? 'Saving…' : saved ? '✓ Changes saved automatically' : 'Changes are saved automatically'}
           </span>
-          <button className={styles.doneBtn} onClick={onClose}>Done</button>
+          <div className={styles.footerBtns}>
+            {onApplyToAll && (
+              <button
+                className={applied ? styles.applyBtnDone : styles.applyBtn}
+                disabled={listingCount === 0 || applied}
+                onClick={() => {
+                  onApplyToAll();
+                  setApplied(true);
+                  setTimeout(() => setApplied(false), 2500);
+                }}
+              >
+                {applied ? `✓ Applied to ${listingCount} listing${listingCount !== 1 ? 's' : ''}` : `Apply to All (${listingCount})`}
+              </button>
+            )}
+            <button className={styles.doneBtn} onClick={onClose}>Done</button>
+          </div>
         </div>
 
       </div>
