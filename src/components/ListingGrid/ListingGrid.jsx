@@ -529,11 +529,11 @@ export default function ListingGrid({
       }
       if (d.fulfillmentPolicyId) patch.fulfillmentPolicyId = d.fulfillmentPolicyId;
       if (d.shippingService)     patch.shippingService     = d.shippingService;
-      if (Number(d.length)    > 0) patch.length    = d.length;
-      if (Number(d.width)     > 0) patch.width     = d.width;
-      if (Number(d.height)    > 0) patch.height    = d.height;
-      if (Number(d.weightLbs) > 0) patch.weightLbs = d.weightLbs;
-      if (Number(d.weightOz)  > 0) patch.weightOz  = d.weightOz;
+      if (d.length    !== '') patch.length    = d.length;
+      if (d.width     !== '') patch.width     = d.width;
+      if (d.height    !== '') patch.height    = d.height;
+      if (d.weightLbs !== '') patch.weightLbs = d.weightLbs;
+      if (d.weightOz  !== '') patch.weightOz  = d.weightOz;
       return Object.keys(patch).length ? { ...listing, ...patch } : listing;
     });
     onChange(next);
