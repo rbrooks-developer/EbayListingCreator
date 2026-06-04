@@ -557,12 +557,16 @@ export default function ListingGrid({
       if (d.height    !== '') patch.height    = d.height;
       if (d.weightLbs !== '') patch.weightLbs = d.weightLbs;
       if (d.weightOz  !== '') patch.weightOz  = d.weightOz;
-      // Best offer % — BIN listings only
-      if (pct > 0 && pct <= 100 && listing.listingType !== 'Auction') {
-        const price = parseFloat(listing.price);
-        patch.bestOffer = (!isNaN(price) && price > 0)
-          ? (price * pct / 100).toFixed(2)
-          : '';
+      // Best offer % — BIN listings only; always apply (empty pct clears the field)
+      if (listing.listingType !== 'Auction') {
+        if (pct > 0 && pct <= 100) {
+          const price = parseFloat(listing.price);
+          patch.bestOffer = (!isNaN(price) && price > 0)
+            ? (price * pct / 100).toFixed(2)
+            : '';
+        } else {
+          patch.bestOffer = '';
+        }
       }
       return Object.keys(patch).length ? { ...listing, ...patch } : listing;
     });
