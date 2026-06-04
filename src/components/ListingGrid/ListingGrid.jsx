@@ -564,7 +564,7 @@ export default function ListingGrid({
           patch.bestOffer = (!isNaN(price) && price > 0)
             ? (price * pct / 100).toFixed(2)
             : '';
-        } else {
+        } else if (pct === 0) {
           patch.bestOffer = '';
         }
       }
