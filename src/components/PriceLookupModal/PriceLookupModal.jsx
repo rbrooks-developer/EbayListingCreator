@@ -16,6 +16,8 @@ export default function PriceLookupModal({ listing, sandbox, onSelectPrice, onCl
       .finally(()  => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const ebaySearchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(listing.title)}&LH_Sold=1&LH_Complete=1`;
+
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose(); }
     document.addEventListener('keydown', onKey);
@@ -41,7 +43,7 @@ export default function PriceLookupModal({ listing, sandbox, onSelectPrice, onCl
 
         <div className={styles.header}>
           <div>
-            <h2 className={styles.title}>Active Listings</h2>
+            <h2 className={styles.title}>Recent Sales</h2>
             <p className={styles.subtitle} title={listing.title}>{shortTitle}</p>
           </div>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
@@ -51,19 +53,44 @@ export default function PriceLookupModal({ listing, sandbox, onSelectPrice, onCl
           {loading && (
             <div className={styles.center}>
               <div className={styles.spinner} />
-              <span>Searching active listings…</span>
+              <span>Looking up recent sales…</span>
             </div>
           )}
 
           {!loading && error && (
             <div className={styles.center}>
-              <span className={styles.errorText}>{error}</span>
+              {error === 'SCOPE_NOT_APPROVED' ? (
+                <>
+                  <span className={styles.errorText}>
+                    Sold listings require the <strong>buy.marketplace.insights</strong> scope to be enabled on your eBay Developer app.
+                  </span>
+                  <a
+                    href="https://developer.ebay.com/my/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.scopeLink}
+                  >
+                    Enable scope at developer.ebay.com →
+                  </a>
+                  <span className={styles.orText}>or</span>
+                  <a
+                    href={ebaySearchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.scopeLink}
+                  >
+                    View sold listings on eBay →
+                  </a>
+                </>
+              ) : (
+                <span className={styles.errorText}>{error}</span>
+              )}
             </div>
           )}
 
           {!loading && !error && sales.length === 0 && (
             <div className={styles.center}>
-              <span>No active listings found for this title.</span>
+              <span>No recent sold listings found for this title.</span>
             </div>
           )}
 

@@ -118,6 +118,17 @@
   line-height: 1.5;
 }
 
+.scopeLink {
+  font-size: 0.82rem;
+  color: var(--ebay-blue);
+  text-decoration: underline;
+}
+
+.orText {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 /* ── Results list ────────────────────────────────────────────────────────── */
 
 .resultRow {

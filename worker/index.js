@@ -1272,56 +1272,50 @@ async function handleEbaySellerListings({ token, sandbox = false, page = 1, entr
 }
 
 // ── /ebay/price-lookup ────────────────────────────────────────────────────────
-// Uses the eBay Browse API (item_summary/search) with a standard Application
-// Token (base scope only — no special approval required).
-// The Finding API was shut down Jan 2025; Marketplace Insights requires approval.
+// Uses the eBay Marketplace Insights API (getHistoricalListing) for sold data.
+// Requires buy.marketplace.insights scope to be enabled on the production eBay
+// app in the developer portal (developer.ebay.com → My Apps → Edit).
+// Always uses production credentials — this API has no sandbox equivalent.
 
-async function handleEbayPriceLookup({ query, sandbox = false }, env) {
+async function handleEbayPriceLookup({ query }, env) {
   if (!query) return err('Missing "query"', 400, env);
-  const clientId     = sandbox ? env.EBAY_SANDBOX_CLIENT_ID     : env.EBAY_CLIENT_ID;
-  const clientSecret = sandbox ? env.EBAY_SANDBOX_CLIENT_SECRET : env.EBAY_CLIENT_SECRET;
+  // Always use production credentials — Marketplace Insights is production-only
+  const clientId     = env.EBAY_CLIENT_ID;
+  const clientSecret = env.EBAY_CLIENT_SECRET;
   if (!clientId || !clientSecret) return err('eBay credentials not configured', 500, env);
 
-  // Get Application token — base scope is sufficient for Browse API
   const creds    = btoa(`${clientId}:${clientSecret}`);
   const tokenRes = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
     method: 'POST',
     headers: {
-      'Authorization':  `Basic ${creds}`,
-      'Content-Type':   'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${creds}`,
+      'Content-Type':  'application/x-www-form-urlencoded',
     },
-    body: 'grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope',
+    body: 'grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope%2Fbuy.marketplace.insights',
   });
   const tokenData = await tokenRes.json().catch(() => ({}));
-  if (!tokenRes.ok) return err(tokenData.error_description ?? 'Failed to get app token', 502, env);
 
-  const browseBase = sandbox
-    ? 'https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search'
-    : 'https://api.ebay.com/buy/browse/v1/item_summary/search';
+  if (!tokenRes.ok) {
+    if (tokenData.error === 'invalid_scope') {
+      return err('SCOPE_NOT_APPROVED', 403, env);
+    }
+    return err(tokenData.error_description ?? 'Failed to get app token', 502, env);
+  }
 
-  const browseUrl = `${browseBase}`
-    + `?q=${encodeURIComponent(query)}`
-    + `&limit=10`
-    + `&sort=newlyListed`
-    + `&filter=${encodeURIComponent('buyingOptions:{FIXED_PRICE}')}`;
+  const url = 'https://api.ebay.com/buy/marketplace_insights/v1_beta/item_sales/search'
+    + `?q=${encodeURIComponent(query)}&limit=10&sort=-lastSoldDate&marketplace_ids=EBAY_US`;
 
-  const res  = await fetch(browseUrl, {
-    headers: {
-      'Authorization':          `Bearer ${tokenData.access_token}`,
-      'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
-    },
-  });
+  const res  = await fetch(url, { headers: { Authorization: `Bearer ${tokenData.access_token}` } });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return err(data.errors?.[0]?.message ?? `Lookup failed (${res.status})`, res.status, env);
 
-  const items = data.itemSummaries ?? [];
-  const sales = items.map((item) => ({
-    title:        item.title ?? '',
-    soldPrice:    item.price?.value ?? '',
-    currency:     item.price?.currency ?? 'USD',
-    soldDate:     '',
-    condition:    item.condition ?? '',
-    thumbnailUrl: item.thumbnailImages?.[0]?.imageUrl ?? item.image?.imageUrl ?? '',
+  const sales = (data.itemSales ?? []).map((s) => ({
+    title:        s.title ?? '',
+    soldPrice:    s.lastSoldPrice?.value ?? '',
+    currency:     s.lastSoldPrice?.currency ?? 'USD',
+    soldDate:     s.lastSoldDate ?? '',
+    condition:    s.condition ?? '',
+    thumbnailUrl: s.image?.imageUrl ?? '',
   }));
 
   return ok({ sales }, env);
