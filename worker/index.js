@@ -129,6 +129,7 @@ async function handle(request, env) {
   if (path.endsWith('/ebay/aspects/get'))    return handleEbayAspectsGet(body, env);
   if (path.endsWith('/ebay/aspects/save'))   return handleEbayAspectsSave(body, env);
   if (path.endsWith('/ebay/seller-listings')) return handleEbaySellerListings(body, env);
+  if (path.endsWith('/ebay/price-lookup'))    return handleEbayPriceLookup(body, env);
   if (path.endsWith('/billing/tiers'))    return handleBillingTiers(body, env);
   if (path.endsWith('/billing/usage'))    return handleBillingUsage(body, env);
   if (path.endsWith('/billing/checkout')) return handleBillingCheckout(body, env);
@@ -1268,6 +1269,54 @@ async function handleEbaySellerListings({ token, sandbox = false, page = 1, entr
   listings.sort((a, b) => parseInt(b.itemId || '0') - parseInt(a.itemId || '0'));
 
   return ok({ listings, totalPages, totalEntries, page: safePage }, env);
+}
+
+// ── /ebay/price-lookup ────────────────────────────────────────────────────────
+
+async function getEbayAppToken(clientId, clientSecret) {
+  const creds = btoa(`${clientId}:${clientSecret}`);
+  const res = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${creds}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope%2Fbuy.marketplace.insights',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error_description ?? 'Failed to get app token');
+  return data.access_token;
+}
+
+async function handleEbayPriceLookup({ query }, env) {
+  if (!query) return err('Missing "query"', 400, env);
+  const clientId     = env.EBAY_CLIENT_ID;
+  const clientSecret = env.EBAY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return err('eBay credentials not configured', 500, env);
+
+  let appToken;
+  try {
+    appToken = await getEbayAppToken(clientId, clientSecret);
+  } catch (e) {
+    return err(e.message, 502, env);
+  }
+
+  const url = 'https://api.ebay.com/buy/marketplace_insights/v1_beta/item_sales/search'
+    + `?q=${encodeURIComponent(query)}&limit=10&sort=-lastSoldDate&marketplace_ids=EBAY_US`;
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${appToken}` } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return err(data.errors?.[0]?.message ?? 'Price lookup failed', res.status, env);
+
+  const sales = (data.itemSales ?? []).map((s) => ({
+    title:        s.title ?? '',
+    soldPrice:    s.lastSoldPrice?.value ?? '',
+    currency:     s.lastSoldPrice?.currency ?? 'USD',
+    soldDate:     s.lastSoldDate ?? '',
+    condition:    s.condition ?? '',
+    thumbnailUrl: s.image?.imageUrl ?? '',
+  }));
+  return ok({ sales }, env);
 }
 
 // ── /ebay/sync ────────────────────────────────────────────────────────────────

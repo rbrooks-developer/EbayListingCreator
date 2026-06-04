@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { createEmptyListing, parseListingFile, exportListingsToExcel, generateTCTemplate } from '../../utils/excelUtils.js';
 import { createListing, fetchAspectsForCategory, fetchConditionPolicies, fetchSellerListings } from '../../services/ebayApi.js';
+import PriceLookupModal from '../PriceLookupModal/PriceLookupModal.jsx';
 import { applyRules } from '../../utils/rulesEngine.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
@@ -45,6 +46,15 @@ function TabbedViewIcon() {
     <svg width="16" height="14" viewBox="0 0 16 14" fill="none" aria-hidden="true">
       <rect x="0.75" y="4.25" width="14.5" height="9" rx="1.25" stroke="currentColor" strokeWidth="1.25"/>
       <rect x="0.75" y="0.75" width="5.5" height="4.25" rx="1" fill="currentColor" opacity="0.75"/>
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.5"/>
+      <line x1="8.5" y1="8.5" x2="13" y2="13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -186,6 +196,7 @@ export default function ListingGrid({
   const [tcModalListingId, setTcModalListingId]     = useState(null);
   const [tcModalInitialType, setTcModalInitialType] = useState('');
   const [imageModalListingId, setImageModalListingId] = useState(null);
+  const [priceLookupListingId, setPriceLookupListingId] = useState(null);
   const [bulkImageOpen, setBulkImageOpen] = useState(false);
   const [defaultsOpen, setDefaultsOpen] = useState(false);
   const [isPostingAll, setIsPostingAll] = useState(false);
@@ -730,6 +741,7 @@ export default function ListingGrid({
                       onOpenTcModal={openTcModal}
                       onPost={handlePost}
                       onOpenImages={() => setImageModalListingId(listing.id)}
+                      onOpenPriceLookup={setPriceLookupListingId}
                       hasCategories={hasCategories}
                       canPost={!!accessToken}
                     />
@@ -761,6 +773,7 @@ export default function ListingGrid({
                 onOpenTcModal={openTcModal}
                 onPost={handlePost}
                 onOpenImages={() => setImageModalListingId(listing.id)}
+                onOpenPriceLookup={setPriceLookupListingId}
                 hasCategories={hasCategories}
                 canPost={!!accessToken}
               />
@@ -790,6 +803,7 @@ export default function ListingGrid({
                 onOpenTcModal={openTcModal}
                 onPost={handlePost}
                 onOpenImages={() => setImageModalListingId(listing.id)}
+                onOpenPriceLookup={setPriceLookupListingId}
                 hasCategories={hasCategories}
                 canPost={!!accessToken}
               />
@@ -883,6 +897,20 @@ export default function ListingGrid({
           />
         );
       })()}
+
+      {/* ── Price lookup modal ── */}
+      {priceLookupListingId && (() => {
+        const listing = listings.find((l) => l.id === priceLookupListingId);
+        if (!listing) return null;
+        return (
+          <PriceLookupModal
+            listing={listing}
+            sandbox={sandbox}
+            onSelectPrice={(price) => updateField(priceLookupListingId, 'price', price)}
+            onClose={() => setPriceLookupListingId(null)}
+          />
+        );
+      })()}
     </section>
   );
 }
@@ -926,7 +954,7 @@ function ErrorMsg({ message }) {
 
 // ── ListingRow ────────────────────────────────────────────────────────────────
 
-function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, tcCategoryIds, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onSetTcType, onOpenTcModal, onPost, onOpenImages, hasCategories, canPost }) {
+function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, tcCategoryIds, onUpdate, onUpdateCategory, onRemove, onOpenAspects, onSetTcType, onOpenTcModal, onPost, onOpenImages, onOpenPriceLookup, hasCategories, canPost }) {
   const isAuction = listing.listingType === 'Auction';
   const aspectsStatus = getAspectsStatus(listing, aspectsCache.current);
   const statusCfg = STATUS_CONFIG[aspectsStatus];
@@ -1138,15 +1166,22 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
       {/* Price (BIN) */}
       <td className={styles.colBestOffer}>
         {!isAuction ? (
-          <input
-            type="text"
-            inputMode="decimal"
-            className={styles.cellInput}
-            value={listing.price}
-            onChange={(e) => field('price', e.target.value)}
-            placeholder="0.00"
-            aria-label="Buy It Now price"
-          />
+          <div className={styles.priceCell}>
+            <input
+              type="text"
+              inputMode="decimal"
+              className={styles.cellInput}
+              value={listing.price}
+              onChange={(e) => field('price', e.target.value)}
+              placeholder="0.00"
+              aria-label="Buy It Now price"
+            />
+            {listing.title && (
+              <button className={styles.priceLookupBtn} onClick={() => onOpenPriceLookup(listing.id)} title="Look up recent sold prices">
+                <SearchIcon />
+              </button>
+            )}
+          </div>
         ) : (
           <span className={styles.naText}>N/A</span>
         )}

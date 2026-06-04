@@ -696,6 +696,36 @@
 .footerWarn { color: var(--warning); font-weight: 600; }
 .footerOk   { color: var(--success); font-weight: 600; }
 
+/* ── Price cell with lookup button ───────────────────────────────────────── */
+
+.priceCell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.priceLookupBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.priceLookupBtn:hover {
+  color: var(--ebay-blue);
+  border-color: var(--ebay-blue);
+  background: rgba(54, 101, 243, 0.06);
+}
+
 /* ── View toggle (3-button group in toolbar) ─────────────────────────────── */
 
 .viewToggle {

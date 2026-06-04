@@ -9,6 +9,15 @@ import {
 import gridStyles from './ListingGrid.module.css';
 import styles from './MultiLevelRow.module.css';
 
+function SearchIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.5"/>
+      <line x1="8.5" y1="8.5" x2="13" y2="13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 function ErrorMsg({ message }) {
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
@@ -30,7 +39,7 @@ function ErrorMsg({ message }) {
 export default function MultiLevelRow({
   listing, categories, shippingServices, fulfillmentPolicies, aspectsCache, tcCategoryIds,
   onUpdate, onUpdateCategory, onRemove, onOpenAspects, onSetTcType, onOpenTcModal, onPost,
-  onOpenImages, hasCategories, canPost,
+  onOpenImages, onOpenPriceLookup, hasCategories, canPost,
 }) {
   const isAuction    = listing.listingType === 'Auction';
   const aspectsSt    = getAspectsStatus(listing, aspectsCache.current);
@@ -209,7 +218,14 @@ export default function MultiLevelRow({
         {!isAuction ? (
           <div className={`${styles.field} ${styles.fieldNarrow}`}>
             <span className={styles.label}>Price ($)</span>
-            <input type="text" inputMode="decimal" className={gridStyles.cellInput} value={listing.price} onChange={(e) => field('price', e.target.value)} placeholder="0.00" aria-label="Buy It Now price" />
+            <div className={styles.priceRow}>
+              <input type="text" inputMode="decimal" className={gridStyles.cellInput} value={listing.price} onChange={(e) => field('price', e.target.value)} placeholder="0.00" aria-label="Buy It Now price" />
+              {listing.title && (
+                <button className={styles.lookupBtn} onClick={() => onOpenPriceLookup(listing.id)} title="Look up recent sold prices">
+                  <SearchIcon />
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <>
