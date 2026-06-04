@@ -247,9 +247,16 @@ export default function ListingGrid({
           updated.auctionDays = '';
           updated.auctionStartPrice = '';
         }
-        // Changing category clears aspects (they belong to the old category)
         if (field === 'categoryId') {
           updated.aspects = {};
+        }
+        // Auto-recalculate Best Offer when Price changes and a default % is set
+        if (field === 'price' && updated.listingType !== 'Auction') {
+          const pct = parseFloat(bestOfferPct);
+          const price = parseFloat(value);
+          if (pct > 0 && pct <= 100 && !isNaN(price) && price > 0) {
+            updated.bestOffer = (price * pct / 100).toFixed(2);
+          }
         }
         return updated;
       })
