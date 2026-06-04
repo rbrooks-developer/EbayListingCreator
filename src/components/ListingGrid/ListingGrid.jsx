@@ -1177,7 +1177,7 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
               aria-label="Buy It Now price"
             />
             {listing.title && (
-              <button className={styles.priceLookupBtn} onClick={() => onOpenPriceLookup(listing.id)} title="Look up recent sold prices">
+              <button className={styles.priceLookupBtn} onClick={() => onOpenPriceLookup(listing.id)} title="Look up active listings">
                 <SearchIcon />
               </button>
             )}

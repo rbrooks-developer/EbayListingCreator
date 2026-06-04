@@ -220,7 +220,7 @@ export default function MultiLevelRow({
             <div className={styles.priceLabelRow}>
               <span className={styles.label}>Price ($)</span>
               {listing.title && (
-                <button className={styles.lookupBtn} onClick={() => onOpenPriceLookup(listing.id)} title="Look up recent sold prices">
+                <button className={styles.lookupBtn} onClick={() => onOpenPriceLookup(listing.id)} title="Look up active listings">
                   <SearchIcon />
                 </button>
               )}
