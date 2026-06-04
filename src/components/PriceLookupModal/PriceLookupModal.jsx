@@ -41,7 +41,7 @@ export default function PriceLookupModal({ listing, sandbox, onSelectPrice, onCl
 
         <div className={styles.header}>
           <div>
-            <h2 className={styles.title}>Recent Sales</h2>
+            <h2 className={styles.title}>Active Listings</h2>
             <p className={styles.subtitle} title={listing.title}>{shortTitle}</p>
           </div>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
@@ -51,7 +51,7 @@ export default function PriceLookupModal({ listing, sandbox, onSelectPrice, onCl
           {loading && (
             <div className={styles.center}>
               <div className={styles.spinner} />
-              <span>Looking up recent sales…</span>
+              <span>Searching active listings…</span>
             </div>
           )}
 
@@ -63,7 +63,7 @@ export default function PriceLookupModal({ listing, sandbox, onSelectPrice, onCl
 
           {!loading && !error && sales.length === 0 && (
             <div className={styles.center}>
-              <span>No recent sold listings found for this title.</span>
+              <span>No active listings found for this title.</span>
             </div>
           )}
 

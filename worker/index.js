@@ -1272,56 +1272,57 @@ async function handleEbaySellerListings({ token, sandbox = false, page = 1, entr
 }
 
 // ── /ebay/price-lookup ────────────────────────────────────────────────────────
-// Uses the eBay Finding API (findCompletedItems) — requires only the App ID,
-// no special scope approval needed.
+// Uses the eBay Browse API (item_summary/search) with a standard Application
+// Token (base scope only — no special approval required).
+// The Finding API was shut down Jan 2025; Marketplace Insights requires approval.
 
 async function handleEbayPriceLookup({ query, sandbox = false }, env) {
   if (!query) return err('Missing "query"', 400, env);
-  const appId = sandbox ? env.EBAY_SANDBOX_CLIENT_ID : env.EBAY_CLIENT_ID;
-  if (!appId) return err('eBay App ID not configured', 500, env);
+  const clientId     = sandbox ? env.EBAY_SANDBOX_CLIENT_ID     : env.EBAY_CLIENT_ID;
+  const clientSecret = sandbox ? env.EBAY_SANDBOX_CLIENT_SECRET : env.EBAY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return err('eBay credentials not configured', 500, env);
 
-  const base = sandbox
-    ? 'https://svcs.sandbox.ebay.com/services/search/FindingService/v1'
-    : 'https://svcs.ebay.com/services/search/FindingService/v1';
+  // Get Application token — base scope is sufficient for Browse API
+  const creds    = btoa(`${clientId}:${clientSecret}`);
+  const tokenRes = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Authorization':  `Basic ${creds}`,
+      'Content-Type':   'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope',
+  });
+  const tokenData = await tokenRes.json().catch(() => ({}));
+  if (!tokenRes.ok) return err(tokenData.error_description ?? 'Failed to get app token', 502, env);
 
-  // Build URL manually — URLSearchParams encodes () as %28%29 which eBay rejects
-  const url = `${base}`
-    + `?OPERATION-NAME=findCompletedItems`
-    + `&SERVICE-VERSION=1.0.3`
-    + `&SECURITY-APPNAME=${encodeURIComponent(appId)}`
-    + `&RESPONSE-DATA-FORMAT=JSON`
-    + `&keywords=${encodeURIComponent(query)}`
-    + `&itemFilter(0).name=SoldItemsOnly`
-    + `&itemFilter(0).value=true`
-    + `&sortOrder=EndTimeSoonest`
-    + `&paginationInput.entriesPerPage=10`;
+  const browseBase = sandbox
+    ? 'https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search'
+    : 'https://api.ebay.com/buy/browse/v1/item_summary/search';
 
-  const res  = await fetch(url);
+  const browseUrl = `${browseBase}`
+    + `?q=${encodeURIComponent(query)}`
+    + `&limit=10`
+    + `&sort=newlyListed`
+    + `&filter=${encodeURIComponent('buyingOptions:{FIXED_PRICE}')}`;
+
+  const res  = await fetch(browseUrl, {
+    headers: {
+      'Authorization':          `Bearer ${tokenData.access_token}`,
+      'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+    },
+  });
   const data = await res.json().catch(() => ({}));
+  if (!res.ok) return err(data.errors?.[0]?.message ?? `Lookup failed (${res.status})`, res.status, env);
 
-  if (!res.ok) {
-    return err(`Price lookup failed (${res.status})`, res.status, env);
-  }
-
-  const response = data?.findCompletedItemsResponse?.[0];
-  const ack      = response?.ack?.[0];
-  if (ack === 'Failure') {
-    const msg = response?.errorMessage?.[0]?.error?.[0]?.message?.[0] ?? 'Price lookup failed';
-    return err(msg, 400, env);
-  }
-
-  const items = response?.searchResult?.[0]?.item ?? [];
-
-  const sales = items
-    .filter((item) => item?.sellingStatus?.[0]?.sellingState?.[0] === 'EndedWithSales')
-    .map((item) => ({
-      title:        item.title?.[0] ?? '',
-      soldPrice:    item.sellingStatus?.[0]?.currentPrice?.[0]?.__value__ ?? '',
-      currency:     item.sellingStatus?.[0]?.currentPrice?.[0]?.['@currencyId'] ?? 'USD',
-      soldDate:     item.listingInfo?.[0]?.endTime?.[0] ?? '',
-      condition:    item.condition?.[0]?.conditionDisplayName?.[0] ?? '',
-      thumbnailUrl: item.galleryURL?.[0] ?? '',
-    }));
+  const items = data.itemSummaries ?? [];
+  const sales = items.map((item) => ({
+    title:        item.title ?? '',
+    soldPrice:    item.price?.value ?? '',
+    currency:     item.price?.currency ?? 'USD',
+    soldDate:     '',
+    condition:    item.condition ?? '',
+    thumbnailUrl: item.thumbnailImages?.[0]?.imageUrl ?? item.image?.imageUrl ?? '',
+  }));
 
   return ok({ sales }, env);
 }
