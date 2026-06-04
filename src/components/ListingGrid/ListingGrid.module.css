@@ -699,31 +699,33 @@
 /* ── Price cell with lookup button ───────────────────────────────────────── */
 
 .priceCell {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  position: relative;
+}
+
+.cellInputWithIcon {
+  padding-right: 24px;
 }
 
 .priceLookupBtn {
-  flex-shrink: 0;
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   padding: 0;
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: none;
   color: var(--text-muted);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: color 0.15s;
 }
 
 .priceLookupBtn:hover {
   color: var(--ebay-blue);
-  border-color: var(--ebay-blue);
-  background: rgba(54, 101, 243, 0.06);
 }
 
 /* ── View toggle (3-button group in toolbar) ─────────────────────────────── */

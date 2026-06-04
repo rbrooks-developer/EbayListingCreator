@@ -189,15 +189,15 @@ export default function TabbedRow({
         </div>
         {!isAuction ? (
           <div className={`${styles.field} ${styles.fieldNarrow}`}>
-            <span className={styles.label}>Price ($)</span>
-            <div className={styles.priceRow}>
-              <input type="text" inputMode="decimal" className={gridStyles.cellInput} value={listing.price} onChange={(e) => field('price', e.target.value)} placeholder="0.00" aria-label="Buy It Now price" />
+            <div className={styles.priceLabelRow}>
+              <span className={styles.label}>Price ($)</span>
               {listing.title && (
                 <button className={styles.lookupBtn} onClick={() => onOpenPriceLookup(listing.id)} title="Look up recent sold prices">
                   <SearchIcon />
                 </button>
               )}
             </div>
+            <input type="text" inputMode="decimal" className={gridStyles.cellInput} value={listing.price} onChange={(e) => field('price', e.target.value)} placeholder="0.00" aria-label="Buy It Now price" />
           </div>
         ) : (
           <>
