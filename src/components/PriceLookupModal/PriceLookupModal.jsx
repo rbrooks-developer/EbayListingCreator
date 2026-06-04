@@ -4,19 +4,17 @@ import { fetchPriceLookup } from '../../services/ebayApi.js';
 import styles from './PriceLookupModal.module.css';
 
 export default function PriceLookupModal({ listing, sandbox, onSelectPrice, onClose }) {
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState('');
-  const [sales,   setSales]   = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState('');
+  const [listings, setListings] = useState([]);
   const overlayRef = useRef(null);
 
   useEffect(() => {
     fetchPriceLookup(listing.title, sandbox)
-      .then((data) => { setSales(data.sales ?? []); })
+      .then((data) => { setListings(data.listings ?? []); })
       .catch((e)   => { setError(e.message || 'Failed to load price data.'); })
       .finally(()  => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const ebaySearchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(listing.title)}&LH_Sold=1&LH_Complete=1`;
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose(); }
@@ -24,10 +22,7 @@ export default function PriceLookupModal({ listing, sandbox, onSelectPrice, onCl
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  function handleSelect(soldPrice) {
-    onSelectPrice(soldPrice);
-    onClose();
-  }
+  const ebaySearchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(listing.title)}&LH_Sold=1&LH_Complete=1`;
 
   const shortTitle = listing.title.length > 45
     ? listing.title.slice(0, 45) + '…'
@@ -43,78 +38,58 @@ export default function PriceLookupModal({ listing, sandbox, onSelectPrice, onCl
 
         <div className={styles.header}>
           <div>
-            <h2 className={styles.title}>Recent Sales</h2>
+            <h2 className={styles.title}>Current Prices</h2>
             <p className={styles.subtitle} title={listing.title}>{shortTitle}</p>
           </div>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className={styles.body}>
+
+          {/* Always-visible link to eBay sold listings */}
+          <div className={styles.soldLink}>
+            <a href={ebaySearchUrl} target="_blank" rel="noopener noreferrer">
+              View actual sold listings on eBay ↗
+            </a>
+          </div>
+
           {loading && (
             <div className={styles.center}>
               <div className={styles.spinner} />
-              <span>Looking up recent sales…</span>
+              <span>Searching active listings…</span>
             </div>
           )}
 
           {!loading && error && (
             <div className={styles.center}>
-              {error === 'SCOPE_NOT_APPROVED' ? (
-                <>
-                  <span className={styles.errorText}>
-                    Sold listings require the <strong>buy.marketplace.insights</strong> scope to be enabled on your eBay Developer app.
-                  </span>
-                  <a
-                    href="https://developer.ebay.com/my/keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.scopeLink}
-                  >
-                    Enable scope at developer.ebay.com →
-                  </a>
-                  <span className={styles.orText}>or</span>
-                  <a
-                    href={ebaySearchUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.scopeLink}
-                  >
-                    View sold listings on eBay →
-                  </a>
-                </>
-              ) : (
-                <span className={styles.errorText}>{error}</span>
-              )}
+              <span className={styles.errorText}>{error}</span>
             </div>
           )}
 
-          {!loading && !error && sales.length === 0 && (
+          {!loading && !error && listings.length === 0 && (
             <div className={styles.center}>
-              <span>No recent sold listings found for this title.</span>
+              <span>No active listings found for this title.</span>
             </div>
           )}
 
-          {!loading && !error && sales.map((sale, i) => (
+          {!loading && !error && listings.map((item, i) => (
             <button
               key={i}
               className={styles.resultRow}
-              onClick={() => handleSelect(sale.soldPrice)}
-              title={`Use $${sale.soldPrice}`}
+              onClick={() => { onSelectPrice(item.price); onClose(); }}
+              title={`Use $${item.price}`}
             >
-              {sale.thumbnailUrl ? (
-                <img src={sale.thumbnailUrl} alt="" className={styles.thumbnail} />
+              {item.thumbnailUrl ? (
+                <img src={item.thumbnailUrl} alt="" className={styles.thumbnail} />
               ) : (
                 <div className={styles.thumbnailPlaceholder} aria-hidden="true">🖼</div>
               )}
               <div className={styles.info}>
-                <span className={styles.itemTitle}>{sale.title}</span>
-                <span className={styles.meta}>
-                  {sale.condition && <>{sale.condition} · </>}
-                  {sale.soldDate && new Date(sale.soldDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
+                <span className={styles.itemTitle}>{item.title}</span>
+                {item.condition && <span className={styles.meta}>{item.condition}</span>}
               </div>
               <div className={styles.priceCol}>
-                <div className={styles.soldPrice}>${parseFloat(sale.soldPrice).toFixed(2)}</div>
+                <div className={styles.soldPrice}>${parseFloat(item.price).toFixed(2)}</div>
                 <div className={styles.useHint}>click to use</div>
               </div>
             </button>

@@ -129,6 +129,21 @@
   color: var(--text-muted);
 }
 
+/* ── Sold listings link ─────────────────────────────────────────────────── */
+
+.soldLink {
+  padding: 0.6rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: #f8f9ff;
+  font-size: 0.8rem;
+}
+
+.soldLink a {
+  color: var(--ebay-blue);
+  text-decoration: underline;
+  font-weight: 500;
+}
+
 /* ── Results list ────────────────────────────────────────────────────────── */
 
 .resultRow {
