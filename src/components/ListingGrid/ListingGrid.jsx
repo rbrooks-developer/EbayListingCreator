@@ -1170,7 +1170,7 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
             <input
               type="text"
               inputMode="decimal"
-              className={`${styles.cellInput} ${listing.title ? styles.cellInputWithIcon : ''}`}
+              className={styles.cellInput}
               value={listing.price}
               onChange={(e) => field('price', e.target.value)}
               placeholder="0.00"
