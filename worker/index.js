@@ -1272,50 +1272,47 @@ async function handleEbaySellerListings({ token, sandbox = false, page = 1, entr
 }
 
 // ── /ebay/price-lookup ────────────────────────────────────────────────────────
+// Uses the eBay Finding API (findCompletedItems) — requires only the App ID,
+// no special scope approval needed.
 
-async function getEbayAppToken(clientId, clientSecret) {
-  const creds = btoa(`${clientId}:${clientSecret}`);
-  const res = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${creds}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope%2Fbuy.marketplace.insights',
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error_description ?? 'Failed to get app token');
-  return data.access_token;
-}
-
-async function handleEbayPriceLookup({ query }, env) {
+async function handleEbayPriceLookup({ query, sandbox = false }, env) {
   if (!query) return err('Missing "query"', 400, env);
-  const clientId     = env.EBAY_CLIENT_ID;
-  const clientSecret = env.EBAY_CLIENT_SECRET;
-  if (!clientId || !clientSecret) return err('eBay credentials not configured', 500, env);
+  const appId = sandbox ? env.EBAY_SANDBOX_CLIENT_ID : env.EBAY_CLIENT_ID;
+  if (!appId) return err('eBay App ID not configured', 500, env);
 
-  let appToken;
-  try {
-    appToken = await getEbayAppToken(clientId, clientSecret);
-  } catch (e) {
-    return err(e.message, 502, env);
-  }
+  const base = sandbox
+    ? 'https://svcs.sandbox.ebay.com/services/search/FindingService/v1'
+    : 'https://svcs.ebay.com/services/search/FindingService/v1';
 
-  const url = 'https://api.ebay.com/buy/marketplace_insights/v1_beta/item_sales/search'
-    + `?q=${encodeURIComponent(query)}&limit=10&sort=-lastSoldDate&marketplace_ids=EBAY_US`;
+  const params = new URLSearchParams({
+    'OPERATION-NAME':          'findCompletedItems',
+    'SERVICE-VERSION':         '1.0.3',
+    'SECURITY-APPNAME':        appId,
+    'RESPONSE-DATA-FORMAT':    'JSON',
+    'keywords':                query,
+    'itemFilter(0).name':      'SoldItemsOnly',
+    'itemFilter(0).value':     'true',
+    'sortOrder':               'EndTimeSoonest',
+    'paginationInput.entriesPerPage': '10',
+  });
 
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${appToken}` } });
+  const res  = await fetch(`${base}?${params}`);
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) return err(data.errors?.[0]?.message ?? 'Price lookup failed', res.status, env);
+  if (!res.ok) return err('Price lookup failed', res.status, env);
 
-  const sales = (data.itemSales ?? []).map((s) => ({
-    title:        s.title ?? '',
-    soldPrice:    s.lastSoldPrice?.value ?? '',
-    currency:     s.lastSoldPrice?.currency ?? 'USD',
-    soldDate:     s.lastSoldDate ?? '',
-    condition:    s.condition ?? '',
-    thumbnailUrl: s.image?.imageUrl ?? '',
-  }));
+  const items = data?.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item ?? [];
+
+  const sales = items
+    .filter((item) => item?.sellingStatus?.[0]?.sellingState?.[0] === 'EndedWithSales')
+    .map((item) => ({
+      title:        item.title?.[0] ?? '',
+      soldPrice:    item.sellingStatus?.[0]?.currentPrice?.[0]?.__value__ ?? '',
+      currency:     item.sellingStatus?.[0]?.currentPrice?.[0]?.['@currencyId'] ?? 'USD',
+      soldDate:     item.listingInfo?.[0]?.endTime?.[0] ?? '',
+      condition:    item.condition?.[0]?.conditionDisplayName?.[0] ?? '',
+      thumbnailUrl: item.galleryURL?.[0] ?? '',
+    }));
+
   return ok({ sales }, env);
 }
 
