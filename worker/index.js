@@ -1315,13 +1315,15 @@ async function handleEbayPriceLookup({ query, sandbox = false }, env) {
   if (!res.ok) return err(data.errors?.[0]?.message ?? `Lookup failed (${res.status})`, res.status, env);
 
   const items = data.itemSummaries ?? [];
-  const listings = items.map((item) => ({
-    title:        item.title ?? '',
-    price:        item.price?.value ?? '',
-    currency:     item.price?.currency ?? 'USD',
-    condition:    item.condition ?? '',
-    thumbnailUrl: item.thumbnailImages?.[0]?.imageUrl ?? item.image?.imageUrl ?? '',
-  }));
+  const listings = items
+    .map((item) => ({
+      title:        item.title ?? '',
+      price:        item.price?.value ?? '',
+      currency:     item.price?.currency ?? 'USD',
+      condition:    item.condition ?? '',
+      thumbnailUrl: item.thumbnailImages?.[0]?.imageUrl ?? item.image?.imageUrl ?? '',
+    }))
+    .sort((a, b) => parseFloat(a.price || 0) - parseFloat(b.price || 0));
 
   return ok({ listings }, env);
 }
