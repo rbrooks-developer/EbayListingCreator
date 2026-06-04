@@ -708,19 +708,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   background: transparent;
-  border: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
-  font-size: 0.65rem;
   cursor: pointer;
-  transition: color 0.15s;
-  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 
 .priceLookupBtn:hover {
   color: var(--ebay-blue);
+  border-color: var(--ebay-blue);
+  background: rgba(54, 101, 243, 0.06);
 }
 
 /* ── View toggle (3-button group in toolbar) ─────────────────────────────── */
