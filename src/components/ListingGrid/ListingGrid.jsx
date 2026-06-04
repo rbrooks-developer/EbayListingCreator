@@ -253,9 +253,11 @@ export default function ListingGrid({
         // Auto-recalculate Best Offer when Price changes and a default % is set
         if (field === 'price' && updated.listingType !== 'Auction') {
           const pct = parseFloat(bestOfferPct);
-          const price = parseFloat(value);
-          if (pct > 0 && pct <= 100 && !isNaN(price) && price > 0) {
-            updated.bestOffer = (price * pct / 100).toFixed(2);
+          if (pct > 0 && pct <= 100) {
+            const price = parseFloat(value);
+            updated.bestOffer = (!isNaN(price) && price > 0)
+              ? (price * pct / 100).toFixed(2)
+              : '';
           }
         }
         return updated;
@@ -558,9 +560,9 @@ export default function ListingGrid({
       // Best offer % — BIN listings only
       if (pct > 0 && pct <= 100 && listing.listingType !== 'Auction') {
         const price = parseFloat(listing.price);
-        if (!isNaN(price) && price > 0) {
-          patch.bestOffer = (price * pct / 100).toFixed(2);
-        }
+        patch.bestOffer = (!isNaN(price) && price > 0)
+          ? (price * pct / 100).toFixed(2)
+          : '';
       }
       return Object.keys(patch).length ? { ...listing, ...patch } : listing;
     });
