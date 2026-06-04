@@ -1284,23 +1284,33 @@ async function handleEbayPriceLookup({ query, sandbox = false }, env) {
     ? 'https://svcs.sandbox.ebay.com/services/search/FindingService/v1'
     : 'https://svcs.ebay.com/services/search/FindingService/v1';
 
-  const params = new URLSearchParams({
-    'OPERATION-NAME':          'findCompletedItems',
-    'SERVICE-VERSION':         '1.0.3',
-    'SECURITY-APPNAME':        appId,
-    'RESPONSE-DATA-FORMAT':    'JSON',
-    'keywords':                query,
-    'itemFilter(0).name':      'SoldItemsOnly',
-    'itemFilter(0).value':     'true',
-    'sortOrder':               'EndTimeSoonest',
-    'paginationInput.entriesPerPage': '10',
-  });
+  // Build URL manually — URLSearchParams encodes () as %28%29 which eBay rejects
+  const url = `${base}`
+    + `?OPERATION-NAME=findCompletedItems`
+    + `&SERVICE-VERSION=1.0.3`
+    + `&SECURITY-APPNAME=${encodeURIComponent(appId)}`
+    + `&RESPONSE-DATA-FORMAT=JSON`
+    + `&keywords=${encodeURIComponent(query)}`
+    + `&itemFilter(0).name=SoldItemsOnly`
+    + `&itemFilter(0).value=true`
+    + `&sortOrder=EndTimeSoonest`
+    + `&paginationInput.entriesPerPage=10`;
 
-  const res  = await fetch(`${base}?${params}`);
+  const res  = await fetch(url);
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) return err('Price lookup failed', res.status, env);
 
-  const items = data?.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item ?? [];
+  if (!res.ok) {
+    return err(`Price lookup failed (${res.status})`, res.status, env);
+  }
+
+  const response = data?.findCompletedItemsResponse?.[0];
+  const ack      = response?.ack?.[0];
+  if (ack === 'Failure') {
+    const msg = response?.errorMessage?.[0]?.error?.[0]?.message?.[0] ?? 'Price lookup failed';
+    return err(msg, 400, env);
+  }
+
+  const items = response?.searchResult?.[0]?.item ?? [];
 
   const sales = items
     .filter((item) => item?.sellingStatus?.[0]?.sellingState?.[0] === 'EndedWithSales')
