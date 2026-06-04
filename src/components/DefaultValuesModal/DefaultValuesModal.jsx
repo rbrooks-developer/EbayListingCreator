@@ -11,6 +11,8 @@ export default function DefaultValuesModal({
   fulfillmentPolicies,
   shippingServices,
   onPrewarm,
+  bestOfferPct,
+  onChangeBestOfferPct,
   onApplyToAll,
   listingCount,
   onClose,
@@ -112,6 +114,32 @@ export default function DefaultValuesModal({
             {defaults.categoryName && (
               <span className={styles.hint}>{defaults.categoryName}</span>
             )}
+          </div>
+
+          {/* Best Offer % */}
+          <div className={styles.field}>
+            <div className={styles.fieldHeader}>
+              <span className={styles.label}>Best Offer (% of Price)</span>
+              {bestOfferPct && (
+                <button className={styles.clearBtn} onClick={() => onChangeBestOfferPct('')} title="Clear percentage">✕ Clear</button>
+              )}
+            </div>
+            <div className={styles.pctRow}>
+              <input
+                type="text"
+                inputMode="numeric"
+                className={styles.numInput}
+                value={bestOfferPct}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val === '' || Number(val) <= 100) onChangeBestOfferPct(val);
+                }}
+                placeholder="e.g. 90"
+                maxLength={3}
+              />
+              <span className={styles.pctSymbol}>%</span>
+            </div>
+            <span className={styles.hint}>Buy It Now only · applied when using Apply to All</span>
           </div>
 
           {/* Ship Policy */}

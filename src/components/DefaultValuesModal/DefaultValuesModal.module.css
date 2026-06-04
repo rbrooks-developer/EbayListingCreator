@@ -151,6 +151,19 @@
 
 /* ── Dimension / weight row ─────────────────────────────────────────────── */
 
+.pctRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100px;
+}
+
+.pctSymbol {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
 .dimRow {
   display: flex;
   gap: 0.75rem;

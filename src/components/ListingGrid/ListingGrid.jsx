@@ -184,6 +184,8 @@ export default function ListingGrid({
   const maxImages = usage?.maxImages ?? 24;
   const { defaults, saveDefaults } = useListingDefaults();
 
+  const [bestOfferPct, setBestOfferPct] = useLocalStorage('defaultBestOfferPct', '');
+
   const [viewMode, setViewMode] = useLocalStorage(
     'listingGridViewMode',
     window.innerWidth < 768 ? 'multilevel' : 'standard'
@@ -531,6 +533,7 @@ export default function ListingGrid({
 
   function applyDefaultsToAll() {
     const d = defaults;
+    const pct = parseFloat(bestOfferPct);
     const next = listings.map((listing) => {
       const patch = {};
       if (d.categoryId) {
@@ -545,6 +548,13 @@ export default function ListingGrid({
       if (d.height    !== '') patch.height    = d.height;
       if (d.weightLbs !== '') patch.weightLbs = d.weightLbs;
       if (d.weightOz  !== '') patch.weightOz  = d.weightOz;
+      // Best offer % — BIN listings only
+      if (pct > 0 && pct <= 100 && listing.listingType !== 'Auction') {
+        const price = parseFloat(listing.price);
+        if (!isNaN(price) && price > 0) {
+          patch.bestOffer = (price * pct / 100).toFixed(2);
+        }
+      }
       return Object.keys(patch).length ? { ...listing, ...patch } : listing;
     });
     onChange(next);
@@ -864,6 +874,8 @@ export default function ListingGrid({
           fulfillmentPolicies={fulfillmentPolicies}
           shippingServices={shippingServices}
           onPrewarm={(ids) => prewarmAspects(ids).then(() => onChange([...listingsRef.current]))}
+          bestOfferPct={bestOfferPct}
+          onChangeBestOfferPct={setBestOfferPct}
           onApplyToAll={applyDefaultsToAll}
           listingCount={listings.length}
           onClose={() => setDefaultsOpen(false)}
