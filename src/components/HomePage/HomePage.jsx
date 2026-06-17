@@ -66,7 +66,7 @@ export default function HomePage({ onSignInClick }) {
       {/* ── Hero ── */}
       <section className={styles.hero}>
         <div className={styles.heroInner}>
-          <div className={styles.heroBadge}>Free &amp; Open Source</div>
+          <div className={styles.heroBadge}>Free to Try · No Credit Card Needed</div>
           <h1 className={styles.heroHeadline}>
             Create eBay Listings
             <br />
