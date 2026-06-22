@@ -1286,7 +1286,6 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
             onChange={(e) => field('fulfillmentPolicyId', e.target.value)}
             aria-label="Shipping policy"
           >
-            <option value="">— auto (first) —</option>
             {fulfillmentPolicies.map((p) => (
               <option key={p.fulfillmentPolicyId} value={p.fulfillmentPolicyId}>
                 {p.name}
