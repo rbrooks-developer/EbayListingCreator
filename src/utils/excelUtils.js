@@ -252,13 +252,18 @@ export function parseListingFile(file, categories = [], shippingServices = []) {
           if (entry.shippingService && shippingServices.length > 0) {
             const normalize = (s) => s.toLowerCase().replace(/\s+/g, ' ').trim();
             const svcLower = normalize(entry.shippingService);
-            const match = shippingServices.find(
-              (s) =>
-                normalize(s.serviceName) === svcLower ||
-                normalize(s.serviceCode) === svcLower ||
-                normalize(s.serviceName).includes(svcLower) ||
-                svcLower.includes(normalize(s.serviceName))
+            // Exact match first, then fall back to longest partial match (most specific)
+            let match = shippingServices.find(
+              (s) => normalize(s.serviceName) === svcLower || normalize(s.serviceCode) === svcLower
             );
+            if (!match) {
+              const partials = shippingServices.filter(
+                (s) => normalize(s.serviceName).includes(svcLower) || svcLower.includes(normalize(s.serviceName))
+              );
+              if (partials.length > 0) {
+                match = partials.reduce((best, s) => s.serviceName.length > best.serviceName.length ? s : best);
+              }
+            }
             if (match) {
               entry.shippingService = match.serviceCode;
             } else {
