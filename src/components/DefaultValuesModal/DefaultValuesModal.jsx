@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
+import { countDefaults } from '../../hooks/useListingDefaults.js';
 import styles from './DefaultValuesModal.module.css';
 
 export default function DefaultValuesModal({
@@ -268,7 +269,7 @@ export default function DefaultValuesModal({
             {onApplyToAll && (
               <button
                 className={applied ? styles.applyBtnDone : styles.applyBtn}
-                disabled={listingCount === 0 || applied}
+                disabled={listingCount === 0 || applied || (countDefaults(defaults) === 0 && !bestOfferPct)}
                 onClick={() => {
                   onApplyToAll();
                   setApplied(true);
