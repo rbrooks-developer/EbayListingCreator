@@ -142,7 +142,9 @@ export default function DefaultValuesModal({
           <div className={styles.field}>
             <div className={styles.fieldHeader}>
               <span className={styles.label}>Ship Policy</span>
-              <button className={styles.clearBtn} onClick={clearFulfillment} title="Clear policy">✕ Clear</button>
+              {defaults.fulfillmentPolicyId && (
+                <button className={styles.clearBtn} onClick={clearFulfillment} title="Clear policy">✕ Clear</button>
+              )}
             </div>
             {fulfillmentPolicies.length > 0 ? (
               <select
