@@ -552,7 +552,7 @@ export default function ListingGrid({
   }
 
   function handleExport() {
-    exportListingsToExcel(listings);
+    exportListingsToExcel(listings, 'ebay_listings.xlsx', fulfillmentPolicies);
   }
 
   function applyDefaultsToAll() {

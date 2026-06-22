@@ -335,7 +335,7 @@ export function parseListingFile(file, categories = [], shippingServices = [], f
  * @param {object[]} listings
  * @param {string} filename
  */
-export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx') {
+export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx', fulfillmentPolicies = []) {
   const headers = [
     'Title',
     'Description',
@@ -347,7 +347,7 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
     'Auction Start Price',
     'Auction Days',
     'Best Offer Price',
-    'Shipping Method',
+    'Ship Policy',
     'Length (in)',
     'Width (in)',
     'Height (in)',
@@ -372,7 +372,7 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
     l.auctionStartPrice,
     l.auctionDays,
     l.bestOffer,
-    l.shippingService,
+    fulfillmentPolicies.find((p) => p.fulfillmentPolicyId === l.fulfillmentPolicyId)?.name ?? '',
     l.length,
     l.width,
     l.height,
