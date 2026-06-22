@@ -420,39 +420,49 @@ export default function ListingGrid({
     // Fetch all active eBay listing titles once for the whole batch
     const activeTitles = await fetchActiveTitles();
 
+    // Maintain a local copy so each onChange has fully up-to-date state.
+    // Reading listingsRef.current between iterations is unsafe because React
+    // hasn't re-rendered yet, so prior success/error updates get overwritten.
+    let current = [...listingsRef.current];
+
     for (const listing of pending) {
       const isRevision = !!listing.listingId;
 
       // Live duplicate check — only for new listings
       if (!isRevision && activeTitles.has(listing.title.toLowerCase().trim())) {
-        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : {
+        current = current.map((l) => l.id !== listing.id ? l : {
           ...l,
           postStatus: 'error',
           statusError: 'Duplicate: a listing with this title is already active on eBay.',
-        }));
+        });
+        onChange(current);
         continue;
       }
 
       // Validate before touching status — skip with error if invalid
       const issues = validateListing(listing);
       if (issues.length) {
-        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'error', statusError: issues.join(' · ') }));
+        current = current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'error', statusError: issues.join(' · ') });
+        onChange(current);
         continue;
       }
 
       // Mark only this listing as submitting, then wait for it to finish
-      onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'submitting', statusError: '' }));
+      current = current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'submitting', statusError: '' });
+      onChange(current);
 
       const payload = schedUtc ? { ...listing, scheduledTime: schedUtc } : listing;
       try {
         const { listingId } = await createListing(accessToken, payload, marketplace, sandbox, defaultLocation, defaultPostalCode, supabaseToken);
         const newStatus = schedUtc ? 'scheduled' : 'success';
-        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: newStatus, listingId, ...(schedUtc ? { postedScheduledTime: schedUtc } : {}) }));
+        current = current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: newStatus, listingId, ...(schedUtc ? { postedScheduledTime: schedUtc } : {}) });
+        onChange(current);
       } catch (e) {
         const errMsg = e.message === 'limit_reached'
           ? 'Monthly listing limit reached. Upgrade your plan to continue posting.'
           : e.message;
-        onChange(listingsRef.current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'error', statusError: errMsg }));
+        current = current.map((l) => l.id !== listing.id ? l : { ...l, postStatus: 'error', statusError: errMsg });
+        onChange(current);
         if (e.message === 'limit_reached') break;
       }
     }
