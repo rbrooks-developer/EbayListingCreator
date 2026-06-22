@@ -49,7 +49,6 @@ export function countDefaults(defaults) {
   return [
     !!defaults.categoryId,
     !!defaults.fulfillmentPolicyId,
-    !!defaults.shippingService,
     Number(defaults.length)    > 0,
     Number(defaults.width)     > 0,
     Number(defaults.height)    > 0,

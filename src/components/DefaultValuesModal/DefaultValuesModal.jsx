@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import CategorySelect from '../CategorySelect/CategorySelect.jsx';
-import ShippingPicker from '../ShippingPicker/ShippingPicker.jsx';
 import styles from './DefaultValuesModal.module.css';
 
 export default function DefaultValuesModal({
@@ -57,11 +56,7 @@ export default function DefaultValuesModal({
   }
 
   async function clearFulfillment() {
-    await save({ fulfillmentPolicyId: '' });
-  }
-
-  async function clearShipping() {
-    await save({ shippingService: '' });
+    await save({ fulfillmentPolicyId: '', shippingService: '' });
   }
 
   async function clearDimensions() {
@@ -154,7 +149,11 @@ export default function DefaultValuesModal({
               <select
                 className={styles.select}
                 value={defaults.fulfillmentPolicyId}
-                onChange={(e) => save({ fulfillmentPolicyId: e.target.value })}
+                onChange={(e) => {
+                  const policyId = e.target.value;
+                  const policy = fulfillmentPolicies.find((p) => p.fulfillmentPolicyId === policyId);
+                  save({ fulfillmentPolicyId: policyId, shippingService: policy?.shippingServiceCode ?? '' });
+                }}
               >
                 <option value="">— auto (first) —</option>
                 {fulfillmentPolicies.map((p) => (
@@ -168,23 +167,23 @@ export default function DefaultValuesModal({
             )}
           </div>
 
-          {/* Shipping Method */}
+          {/* Shipping Method — read-only, derived from Ship Policy */}
           <div className={styles.field}>
             <div className={styles.fieldHeader}>
               <span className={styles.label}>Shipping Method</span>
-              {defaults.shippingService && (
-                <button className={styles.clearBtn} onClick={clearShipping} title="Clear shipping method">✕ Clear</button>
-              )}
             </div>
-            {shippingServices.length > 0 ? (
-              <ShippingPicker
-                shippingServices={shippingServices}
-                value={defaults.shippingService}
-                onChange={(code) => save({ shippingService: code })}
-              />
-            ) : (
-              <span className={styles.naText}>Connect API to see shipping methods</span>
-            )}
+            {(() => {
+              const policy = fulfillmentPolicies.find((p) => p.fulfillmentPolicyId === defaults.fulfillmentPolicyId);
+              const code = policy?.shippingServiceCode ?? '';
+              const name = code
+                ? (shippingServices.find((s) => s.serviceCode === code)?.serviceName ?? code)
+                : '';
+              return (
+                <span className={styles.naText} style={{ fontStyle: 'normal' }}>
+                  {name || '— selected automatically from policy —'}
+                </span>
+              );
+            })()}
           </div>
 
           {/* Dimensions */}
