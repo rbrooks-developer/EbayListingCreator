@@ -250,6 +250,11 @@ export default function ListingGrid({
         if (field === 'categoryId') {
           updated.aspects = {};
         }
+        // Auto-set shipping service from the selected fulfillment policy
+        if (field === 'fulfillmentPolicyId') {
+          const policy = fulfillmentPolicies.find((p) => p.fulfillmentPolicyId === value);
+          updated.shippingService = policy?.shippingServiceCode ?? '';
+        }
         // Auto-recalculate Best Offer when Price changes and a default % is set
         if (field === 'price' && updated.listingType !== 'Auction') {
           const pct = parseFloat(bestOfferPct);
@@ -519,7 +524,7 @@ export default function ListingGrid({
     setImportErrors([]);
     setImportStatus('Parsing file...');
     try {
-      const { listings: imported, errors } = await parseListingFile(file, categories, shippingServices);
+      const { listings: imported, errors } = await parseListingFile(file, categories, shippingServices, fulfillmentPolicies);
       setImportErrors(errors);
       if (imported.length > 0) {
         const withDefaults = imported.map((l) => applyListingDefaults(l, defaults));
@@ -560,8 +565,11 @@ export default function ListingGrid({
         patch.categoryName = d.categoryName || '';
         if (listing.categoryId !== d.categoryId) patch.aspects = {};
       }
-      if (d.fulfillmentPolicyId) patch.fulfillmentPolicyId = d.fulfillmentPolicyId;
-      if (d.shippingService)     patch.shippingService     = d.shippingService;
+      if (d.fulfillmentPolicyId) {
+        patch.fulfillmentPolicyId = d.fulfillmentPolicyId;
+        const policy = fulfillmentPolicies.find((p) => p.fulfillmentPolicyId === d.fulfillmentPolicyId);
+        patch.shippingService = policy?.shippingServiceCode ?? '';
+      }
       if (d.length    !== '') patch.length    = d.length;
       if (d.width     !== '') patch.width     = d.width;
       if (d.height    !== '') patch.height    = d.height;
@@ -1290,17 +1298,13 @@ function ListingRow({ listing, categories, shippingServices, fulfillmentPolicies
         )}
       </td>
 
-      {/* Shipping Method */}
+      {/* Shipping Method — derived from ship policy, read-only */}
       <td className={styles.colShipping}>
-        {shippingServices.length > 0 ? (
-          <ShippingPicker
-            shippingServices={shippingServices}
-            value={listing.shippingService}
-            onChange={(code) => field('shippingService', code)}
-          />
-        ) : (
-          <span className={styles.naText}>Connect API</span>
-        )}
+        <span className={styles.naText} style={{ fontStyle: 'normal' }}>
+          {listing.shippingService
+            ? (shippingServices.find((s) => s.serviceCode === listing.shippingService)?.serviceName ?? listing.shippingService)
+            : '— from policy —'}
+        </span>
       </td>
 
       {/* Dimensions */}

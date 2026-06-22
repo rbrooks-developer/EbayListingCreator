@@ -234,11 +234,11 @@ export default function TabbedRow({
         </div>
         <div className={`${styles.field} ${styles.fieldWide}`}>
           <span className={styles.label}>Shipping Method</span>
-          {shippingServices.length > 0 ? (
-            <ShippingPicker shippingServices={shippingServices} value={listing.shippingService} onChange={(code) => field('shippingService', code)} />
-          ) : (
-            <span className={gridStyles.naText}>Connect API</span>
-          )}
+          <span className={gridStyles.naText} style={{ fontStyle: 'normal', paddingTop: '2px' }}>
+            {listing.shippingService
+              ? (shippingServices.find((s) => s.serviceCode === listing.shippingService)?.serviceName ?? listing.shippingService)
+              : '— from policy —'}
+          </span>
         </div>
         {[['length', 'Length (in)'], ['width', 'Width (in)'], ['height', 'Height (in)']].map(([key, lbl]) => (
           <div key={key} className={`${styles.field} ${styles.fieldTiny}`}>

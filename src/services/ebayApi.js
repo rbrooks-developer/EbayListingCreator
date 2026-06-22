@@ -247,6 +247,9 @@ export async function fetchFulfillmentPolicies(accessToken, marketplaceId = 'EBA
     return (data.fulfillmentPolicies ?? []).map((p) => ({
       fulfillmentPolicyId: p.fulfillmentPolicyId,
       name: p.name,
+      shippingServiceCode: p.shippingOptions
+        ?.find((o) => o.optionType === 'DOMESTIC')
+        ?.shippingServices?.[0]?.shippingServiceCode ?? '',
     }));
   } catch {
     return [];

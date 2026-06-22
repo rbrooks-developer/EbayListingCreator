@@ -524,22 +524,28 @@ async function handleCreateListing(body, env) {
     </ConditionDescriptors>`;
 
   // ── Shipping ──────────────────────────────────────────────────────────────
-  const hasDims              = !!(listing.length && listing.width && listing.height);
-  const hasWeight            = !!(listing.weightLbs || listing.weightOz);
-  const hasPerListingService = !!listing.shippingService;
+  const hasDims   = !!(listing.length && listing.width && listing.height);
+  const hasWeight = !!(listing.weightLbs || listing.weightOz);
   let shippingXml = '';
   let returnPolicyXml = '';
   let sellerProfilesXml = '';
 
-  // Build inline ShippingDetails XML (used when no fulfillment policy is attached,
-  // OR when a per-listing shippingService overrides the policy's shipping method).
-  function buildShippingDetailsXml(serviceCode) {
-    return (hasDims && hasWeight) ? `
+  if (useBusinessPolicies) {
+    const returnProfileId  = returnPolicy?.returnPolicyId ?? '';
+    const paymentProfileId = (isAuction || listing.bestOffer) ? '' : (paymentPolicy?.paymentPolicyId ?? '');
+    sellerProfilesXml = `
+    <SellerProfiles>
+      ${fulfillmentPolicyId ? `<SellerShippingProfile><ShippingProfileID>${fulfillmentPolicyId}</ShippingProfileID></SellerShippingProfile>` : ''}
+      ${returnProfileId     ? `<SellerReturnProfile><ReturnProfileID>${returnProfileId}</ReturnProfileID></SellerReturnProfile>`             : ''}
+      ${paymentProfileId    ? `<SellerPaymentProfile><PaymentProfileID>${paymentProfileId}</PaymentProfileID></SellerPaymentProfile>`       : ''}
+    </SellerProfiles>`;
+  } else {
+    shippingXml = (hasDims && hasWeight) ? `
     <ShippingDetails>
       <ShippingType>Calculated</ShippingType>
       <ShippingServiceOptions>
         <ShippingServicePriority>1</ShippingServicePriority>
-        <ShippingService>${xmlEscape(serviceCode)}</ShippingService>
+        <ShippingService>${xmlEscape(listing.shippingService || 'USPSPriority')}</ShippingService>
       </ShippingServiceOptions>
       <PackageDepth>${listing.height}</PackageDepth>
       <PackageLength>${listing.length}</PackageLength>
@@ -551,33 +557,10 @@ async function handleCreateListing(body, env) {
       <ShippingType>Flat</ShippingType>
       <ShippingServiceOptions>
         <ShippingServicePriority>1</ShippingServicePriority>
-        <ShippingService>${xmlEscape(serviceCode)}</ShippingService>
+        <ShippingService>${xmlEscape(listing.shippingService || 'USPSPriority')}</ShippingService>
         <ShippingServiceCost>0.00</ShippingServiceCost>
       </ShippingServiceOptions>
     </ShippingDetails>`;
-  }
-
-  if (useBusinessPolicies) {
-    const returnProfileId  = returnPolicy?.returnPolicyId ?? '';
-    const paymentProfileId = (isAuction || listing.bestOffer) ? '' : (paymentPolicy?.paymentPolicyId ?? '');
-
-    // When the listing specifies its own shipping method, skip the fulfillment
-    // policy so eBay uses the per-listing ShippingDetails instead. The policy's
-    // shipping method would otherwise override the per-listing service choice.
-    const useShippingProfile = !hasPerListingService && !!fulfillmentPolicyId;
-
-    sellerProfilesXml = `
-    <SellerProfiles>
-      ${useShippingProfile  ? `<SellerShippingProfile><ShippingProfileID>${fulfillmentPolicyId}</ShippingProfileID></SellerShippingProfile>` : ''}
-      ${returnProfileId     ? `<SellerReturnProfile><ReturnProfileID>${returnProfileId}</ReturnProfileID></SellerReturnProfile>`             : ''}
-      ${paymentProfileId    ? `<SellerPaymentProfile><PaymentProfileID>${paymentProfileId}</PaymentProfileID></SellerPaymentProfile>`       : ''}
-    </SellerProfiles>`;
-
-    if (hasPerListingService) {
-      shippingXml = buildShippingDetailsXml(listing.shippingService);
-    }
-  } else {
-    shippingXml = buildShippingDetailsXml(listing.shippingService || 'USPSPriority');
     returnPolicyXml = `
     <ReturnPolicy>
       <ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>

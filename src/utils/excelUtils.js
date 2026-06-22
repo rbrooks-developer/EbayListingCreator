@@ -44,10 +44,11 @@ const HEADER_MAP = {
   'auction days':          'auctionDays',
   'auction length':        'auctionDays',
   'duration':              'auctionDays',
-  // Shipping
-  'shipping method':       'shippingService',
-  'shipping service':      'shippingService',
-  'ship method':           'shippingService',
+  // Ship policy (shipping method is derived from the policy — import the policy name instead)
+  'ship policy':           'fulfillmentPolicyName',
+  'ship policy name':      'fulfillmentPolicyName',
+  'shipping policy':       'fulfillmentPolicyName',
+  'fulfillment policy':    'fulfillmentPolicyName',
   // Dimensions
   'length':                'length',
   'length (in)':           'length',
@@ -134,7 +135,7 @@ const TC_CATEGORY_ALIASES = {
  * @param {object[]} shippingServices  — [{ serviceCode, serviceName }]
  * @returns {Promise<{listings: object[], errors: string[]}>}
  */
-export function parseListingFile(file, categories = [], shippingServices = []) {
+export function parseListingFile(file, categories = [], shippingServices = [], fulfillmentPolicies = []) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -248,27 +249,23 @@ export function parseListingFile(file, categories = [], shippingServices = []) {
             }
           }
 
-          // Resolve shipping service name → serviceCode
-          if (entry.shippingService && shippingServices.length > 0) {
-            const normalize = (s) => s.toLowerCase().replace(/\s+/g, ' ').trim();
-            const svcLower = normalize(entry.shippingService);
-            // Exact match first, then fall back to longest partial match (most specific)
-            let match = shippingServices.find(
-              (s) => normalize(s.serviceName) === svcLower || normalize(s.serviceCode) === svcLower
-            );
-            if (!match) {
-              const partials = shippingServices.filter(
-                (s) => normalize(s.serviceName).includes(svcLower) || svcLower.includes(normalize(s.serviceName))
-              );
-              if (partials.length > 0) {
-                match = partials.reduce((best, s) => s.serviceName.length > best.serviceName.length ? s : best);
-              }
-            }
+          // Resolve ship policy name → fulfillmentPolicyId + shippingService
+          const policyName = entry.fulfillmentPolicyName;
+          delete entry.fulfillmentPolicyName;
+          if (policyName && fulfillmentPolicies.length > 0) {
+            const norm = (s) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+            const match = fulfillmentPolicies.find((p) => norm(p.name) === norm(policyName));
             if (match) {
-              entry.shippingService = match.serviceCode;
+              entry.fulfillmentPolicyId = match.fulfillmentPolicyId;
+              entry.shippingService     = match.shippingServiceCode ?? '';
             } else {
-              errors.push(`Row ${lineNum}: Shipping method "${entry.shippingService}" not found — select it manually.`);
+              errors.push(`Row ${lineNum}: Ship Policy "${policyName}" not found — select it manually.`);
             }
+          }
+          // Default to first policy when none specified
+          if (!entry.fulfillmentPolicyId && fulfillmentPolicies.length > 0) {
+            entry.fulfillmentPolicyId = fulfillmentPolicies[0].fulfillmentPolicyId;
+            entry.shippingService     = fulfillmentPolicies[0].shippingServiceCode ?? '';
           }
 
           // ── Resolve trading card condition descriptors ──────────────────────
