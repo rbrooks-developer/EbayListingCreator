@@ -367,7 +367,7 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
   const rows = listings.map((l) => [
     l.title,
     l.description,
-    l.category ?? '',
+    l.categoryName ?? '',
     l.quantity,
     l.condition,
     l.listingType === 'BuyItNow' ? 'Buy It Now' : l.listingType,
@@ -381,7 +381,7 @@ export function exportListingsToExcel(listings, filename = 'ebay_listings.xlsx')
     l.height,
     l.weightLbs,
     l.weightOz,
-    l.images?.find((img) => img.ebayUrl)?.ebayUrl ?? '',
+    l.images?.filter((img) => img.ebayUrl).map((img) => img.ebayUrl).join(';') ?? '',
     // TC fields — export as human-readable labels, not numeric IDs
     l.tcConditionType === 'graded'   ? 'Graded'
       : l.tcConditionType === 'ungraded' ? 'Ungraded' : '',
