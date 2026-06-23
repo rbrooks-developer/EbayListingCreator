@@ -445,7 +445,7 @@ export function generateTCTemplate() {
   ];
 
   const exampleGraded = [
-    '1998 BGS 9.5 Michael Jordan #1 Topps Chrome',
+    '1998 BGS 9.5 Michael Jordan #1 Topps Chrome Basketball',
     'BGS graded 9.5 Michael Jordan Topps Chrome 1998. Gem Mint condition.',
     'Sports Trading Cards',
     '1',
@@ -464,7 +464,7 @@ export function generateTCTemplate() {
   ];
 
   const exampleUngraded = [
-    '1999 Charizard Base Set Unlimited Holo',
+    '1999 Pokemon Charizard Base Set Unlimited Holo',
     'Ungraded Charizard from the 1999 Base Set Unlimited printing. Lightly played.',
     'Collectible Card Games/MTG',
     '1',
