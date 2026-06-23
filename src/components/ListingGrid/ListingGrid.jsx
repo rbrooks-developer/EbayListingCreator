@@ -232,7 +232,10 @@ export default function ListingGrid({
 
   function addRow() {
     const row = applyListingDefaults(createEmptyListing(), defaults);
-    if (row.fulfillmentPolicyId && !row.shippingService) {
+    if (!row.fulfillmentPolicyId && fulfillmentPolicies.length > 0) {
+      row.fulfillmentPolicyId = fulfillmentPolicies[0].fulfillmentPolicyId;
+      row.shippingService     = fulfillmentPolicies[0].shippingServiceCode ?? '';
+    } else if (row.fulfillmentPolicyId && !row.shippingService) {
       const policy = fulfillmentPolicies.find((p) => p.fulfillmentPolicyId === row.fulfillmentPolicyId);
       row.shippingService = policy?.shippingServiceCode ?? '';
     }
