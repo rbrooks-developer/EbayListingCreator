@@ -12,7 +12,9 @@ if (spaRedirect && spaRedirect !== '/') {
   window.history.replaceState(null, '', spaRedirect);
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+const rootEl = document.getElementById('root');
+rootEl.style.visibility = 'visible';
+ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <HelmetProvider>
       <BrowserRouter>
