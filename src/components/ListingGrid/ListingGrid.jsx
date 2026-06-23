@@ -1447,7 +1447,6 @@ function downloadTemplate() {
     listingType: 'BuyItNow',
     price: '799.99',    
     bestOffer: '749.99',
-    shippingService: 'USPS Ground Advantage',
     length: '8',
     width: '8',
     height: '4',
