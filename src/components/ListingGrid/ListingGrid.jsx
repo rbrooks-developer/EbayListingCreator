@@ -231,7 +231,12 @@ export default function ListingGrid({
   // ── Row mutation helpers ─────────────────────────────────────────────────
 
   function addRow() {
-    onChange([...listings, applyListingDefaults(createEmptyListing(), defaults)]);
+    const row = applyListingDefaults(createEmptyListing(), defaults);
+    if (row.fulfillmentPolicyId && !row.shippingService) {
+      const policy = fulfillmentPolicies.find((p) => p.fulfillmentPolicyId === row.fulfillmentPolicyId);
+      row.shippingService = policy?.shippingServiceCode ?? '';
+    }
+    onChange([...listings, row]);
   }
 
   function removeRow(id) {
